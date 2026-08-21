@@ -1,8 +1,6 @@
-# vinext-starter
+# 低位承接研究台
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+使用同一组真实日线绘制蜡烛图、MA5 和低位承接强度指标。网页通过服务端路由读取 mootdx-cf 的正式日线投影，浏览器不会收到数据 API 凭证。
 
 ## Prerequisites
 
@@ -17,6 +15,33 @@ npm run build
 ```
 
 This starter does not use `wrangler.jsonc`.
+
+## Real market data
+
+The default watchlist contains the four instruments that passed the controlled 250-trading-day preview acceptance: 600036, 688008, 000333, and 300059. The page supports none, qfq, and hfq. It displays the selected source, comparison state, point-in-time boundary, data version, and serving-cache state instead of presenting a single source as independently verified.
+
+The server route requests the Collector's explicit latest mode with a stable 400-calendar-day rolling window and a 250-row limit. The key does not move at midnight; concrete query dates are derived only when the serving snapshot refreshes. That mode uses versioned R2 chart snapshots, conditional ETags, and background refresh. The bearer token remains server-only, and exact historical point-in-time requests remain separate from this fast path.
+
+The stable rolling-window acceptance returned the three 250-row chart bases from R2 in 255 ms, 122 ms, and 180 ms at a cold edge location, then in 39 ms, 36 ms, and 28 ms from that location's edge cache. The page exposes the current cache state so a slow origin fill, R2 snapshot read, stale response, and edge hit are distinguishable during diagnosis.
+
+Configure the server-only values shown in `.env.example`. Never rename the bearer token with a `NEXT_PUBLIC_` prefix.
+
+When the local machine cannot resolve or reach workers.dev reliably, start the loopback-only SOCKS5 bridge in one terminal:
+
+```bash
+export MOOTDX_DATA_API_BEARER_TOKEN=replace-with-preview-api-token
+npm run dev:market-proxy
+```
+
+Then start the site in a second terminal:
+
+```bash
+export MOOTDX_DATA_API_BEARER_TOKEN=replace-with-preview-api-token
+export MOOTDX_DATA_API_BASE_URL=http://127.0.0.1:3101
+npm run dev
+```
+
+The bridge listens only on 127.0.0.1, verifies the bearer token, and sends the upstream credential to curl through standard input. It also forwards short-lived realtime WebSocket connections through the same SOCKS5 endpoint. Start the site on port 3000, or set MOOTDX_BROWSER_ORIGIN to its exact local origin before starting the bridge. Production uses a Cloudflare Secret named `MOOTDX_DATA_API_BEARER_TOKEN` and connects to the Collector directly; it does not use the local bridge.
 
 ## Included Shape
 
@@ -90,6 +115,7 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 ## Useful Commands
 
 - `npm run dev`: start local development
+- `npm run dev:market-proxy`: start the loopback-only preview bridge for unreliable local workers.dev routing
 - `npm run build`: verify the vinext build output
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes

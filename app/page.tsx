@@ -1,6 +1,13 @@
 "use client";
 
-import { ChangeEvent, PointerEvent, useMemo, useState } from "react";
+import { SidebarSimpleIcon } from "@phosphor-icons/react";
+import { ChangeEvent, PointerEvent, useEffect, useMemo, useState } from "react";
+
+import {
+  useRealtimeQuote,
+  type RealtimeConnectionStatus,
+  type RealtimeQuote,
+} from "./use-realtime-quote";
 
 type Candle = {
   date: string;
@@ -9,6 +16,10 @@ type Candle = {
   low: number;
   close: number;
   volume: number;
+  sourceId?: string;
+  comparisonStatus?: string;
+  realtime?: boolean;
+  unconfirmed?: boolean;
 };
 
 type IndicatorPoint = {
@@ -23,22 +34,45 @@ type StockPreset = {
   code: string;
   name: string;
   market: string;
-  base: number;
-  seed: number;
-  drift: number;
+  marketGroup: MarketGroup;
+  instrumentId: string;
+};
+
+type MarketGroup = "A股" | "港股" | "美股";
+
+type AdjustmentBasis = "none" | "qfq" | "hfq";
+
+type DataMeta = {
+  requestKey: string;
+  dataVersion: string | null;
+  asOf: string;
+  cacheStatus: string;
+  sourceId: string;
+  comparisonStatus: string;
 };
 
 const STOCKS: StockPreset[] = [
-  { code: "688008", name: "澜起科技", market: "科创板", base: 71.4, seed: 83, drift: 0.0011 },
-  { code: "688981", name: "中芯国际", market: "科创板", base: 92.8, seed: 157, drift: 0.0007 },
-  { code: "00700", name: "腾讯控股", market: "港股", base: 515.2, seed: 229, drift: 0.0005 },
+  { code: "688008", name: "澜起科技", market: "科创板", marketGroup: "A股", instrumentId: "cn.xshg.688008" },
+  { code: "600036", name: "招商银行", market: "沪市", marketGroup: "A股", instrumentId: "cn.xshg.600036" },
+  { code: "000333", name: "美的集团", market: "深市", marketGroup: "A股", instrumentId: "cn.xshe.000333" },
+  { code: "300059", name: "东方财富", market: "创业板", marketGroup: "A股", instrumentId: "cn.xshe.300059" },
 ];
+
+const MARKET_TABS: MarketGroup[] = ["A股", "港股", "美股"];
 
 const PERIODS = [
   { label: "60日", value: 60 },
   { label: "120日", value: 120 },
-  { label: "全部", value: 180 },
+  { label: "250日", value: 250 },
 ];
+
+const ADJUSTMENT_BASES: { label: string; value: AdjustmentBasis }[] = [
+  { label: "不复权", value: "none" },
+  { label: "前复权", value: "qfq" },
+  { label: "后复权", value: "hfq" },
+];
+
+const MOVING_AVERAGE_PERIODS = [5, 10, 20, 30, 60] as const;
 
 const CHART_WIDTH = 1120;
 const PRICE_HEIGHT = 410;
@@ -48,70 +82,20 @@ const RIGHT = 74;
 const TOP = 20;
 const BOTTOM = 30;
 
-function seededRandom(seed: number) {
-  let value = seed % 2147483647;
-  return () => {
-    value = (value * 16807) % 2147483647;
-    return (value - 1) / 2147483646;
-  };
-}
-
-function tradingDates(count: number) {
-  const dates: string[] = [];
-  const cursor = new Date("2026-08-18T12:00:00");
-  while (dates.length < count) {
-    if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
-      dates.unshift(cursor.toISOString().slice(0, 10));
-    }
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return dates;
-}
-
-function generateSeries(stock: StockPreset, count = 180): Candle[] {
-  const random = seededRandom(stock.seed);
-  const dates = tradingDates(count);
-  const series: Candle[] = [];
-  let previous = stock.base * 0.74;
-
-  for (let index = 0; index < count; index += 1) {
-    const cycle = Math.sin(index / 12) * 0.0024;
-    let dailyMove = (random() - 0.47) * 0.028 + stock.drift + cycle;
-    if (index === 64 || index === 121) dailyMove -= 0.047;
-    if (index === 65 || index === 122) dailyMove += 0.028;
-
-    let open = previous * (1 + (random() - 0.5) * 0.012);
-    let close = previous * (1 + dailyMove);
-    let high = Math.max(open, close) * (1 + random() * 0.015);
-    let low = Math.min(open, close) * (1 - random() * 0.016);
-    let volume = (7_600_000 + random() * 5_100_000) * (1 + Math.abs(dailyMove) * 10);
-
-    if (index === count - 13) {
-      open = previous * 0.962;
-      low = previous * 0.892;
-      close = previous * 1.018;
-      high = close * 1.014;
-      volume = 25_800_000;
-    }
-
-    series.push({
-      date: dates[index],
-      open: Number(open.toFixed(2)),
-      high: Number(high.toFixed(2)),
-      low: Number(low.toFixed(2)),
-      close: Number(close.toFixed(2)),
-      volume: Math.round(volume),
-    });
-    previous = close;
-  }
-  return series;
-}
-
 function movingAverage(values: number[], length: number) {
   return values.map((_, index) => {
     const from = Math.max(0, index - length + 1);
     const window = values.slice(from, index + 1);
     return window.reduce((sum, value) => sum + value, 0) / window.length;
+  });
+}
+
+function fullWindowMovingAverage(values: number[], length: number): (number | null)[] {
+  let sum = 0;
+  return values.map((value, index) => {
+    sum += value;
+    if (index >= length) sum -= values[index - length];
+    return index >= length - 1 ? sum / length : null;
   });
 }
 
@@ -167,29 +151,338 @@ function axisTicks(min: number, max: number, count: number) {
   return Array.from({ length: count }, (_, index) => min + (max - min) * index / (count - 1));
 }
 
+function seriesFingerprint(data: Candle[]) {
+  const input = data.map((item) => [
+    item.date,
+    item.open,
+    item.high,
+    item.low,
+    item.close,
+    item.volume,
+  ].join("|")).join("\n");
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash = Math.imul(hash ^ input.charCodeAt(index), 16777619) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function mergeRealtimeCandle(history: Candle[], quote: RealtimeQuote | null): Candle[] {
+  if (!quote || history.length === 0) return history;
+  const latest = history[history.length - 1];
+  if (!latest || quote.tradingDate < latest.date) return history;
+  const replacingLatest = quote.tradingDate === latest.date;
+  const reference = replacingLatest ? history[history.length - 2] : latest;
+  const adjustmentFactor =
+    reference && quote.previousClose > 0 ? reference.close / quote.previousClose : 1;
+  const candle: Candle = {
+    date: quote.tradingDate,
+    open: quote.open * adjustmentFactor,
+    high: quote.high * adjustmentFactor,
+    low: quote.low * adjustmentFactor,
+    close: quote.last * adjustmentFactor,
+    volume: quote.cumulativeVolume,
+    sourceId: "tencent-realtime",
+    comparisonStatus: "unconfirmed",
+    realtime: true,
+    unconfirmed: true,
+  };
+  return replacingLatest ? [...history.slice(0, -1), candle] : [...history, candle];
+}
+
+function alignFormalIndicators(displayData: Candle[], completedData: Candle[]): IndicatorPoint[] {
+  const formal = calculateIndicator(completedData);
+  const byDate = new Map(completedData.map((item, index) => [item.date, formal[index]]));
+  const fallback = formal[formal.length - 1] ?? {
+    score: 0,
+    raw: 0,
+    closePosition: 0.5,
+    volumeRatio: 1,
+    confirm: false,
+  };
+  return displayData.map((item) => {
+    const point = byDate.get(item.date);
+    return point ?? { ...fallback, confirm: false };
+  });
+}
+
+function WatchlistSidebar({
+  selectedCode,
+  activePrice,
+  activeChange,
+  onSelect,
+}: {
+  selectedCode: string | null;
+  activePrice?: number;
+  activeChange?: number;
+  onSelect: (code: string) => void;
+}) {
+  const [activeMarket, setActiveMarket] = useState<MarketGroup>("A股");
+  const visibleStocks = STOCKS.filter((item) => item.marketGroup === activeMarket);
+
+  return (
+    <nav className="watchlist-sidebar" aria-label="收藏股票">
+      <div className="watchlist-heading">
+        <div><h2>自选股票</h2><p>收藏列表</p></div>
+        <span>{STOCKS.length} 只</span>
+      </div>
+      <div className="market-tabs" role="tablist" aria-label="按市场筛选收藏股票">
+        {MARKET_TABS.map((market) => {
+          const count = STOCKS.filter((item) => item.marketGroup === market).length;
+          return (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeMarket === market}
+              aria-controls={`watchlist-panel-${market}`}
+              className={activeMarket === market ? "active" : ""}
+              key={market}
+              onClick={() => setActiveMarket(market)}
+            >
+              <span>{market}</span><small>{count}</small>
+            </button>
+          );
+        })}
+      </div>
+      <div className="watchlist-panel" id={`watchlist-panel-${activeMarket}`} role="tabpanel">
+        {visibleStocks.length > 0 ? (
+          <ul className="watchlist-items">
+            {visibleStocks.map((item) => {
+              const isActive = selectedCode === item.code;
+              return (
+                <li key={item.code}>
+                  <button
+                    type="button"
+                    className={isActive ? "active" : ""}
+                    aria-current={isActive ? "true" : undefined}
+                    onClick={() => onSelect(item.code)}
+                  >
+                    <span className="watchlist-security"><strong>{item.name}</strong><small>{item.code}</small></span>
+                    {isActive && activePrice !== undefined && activeChange !== undefined ? (
+                      <span className="watchlist-quote"><strong>{formatNumber(activePrice)}</strong><small className={activeChange >= 0 ? "price-up" : "price-down"}>{activeChange >= 0 ? "+" : ""}{formatNumber(activeChange)}%</small></span>
+                    ) : (
+                      <span className="watchlist-market">{item.market}</span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="watchlist-empty"><strong>{activeMarket}暂无收藏</strong><p>收藏后会显示在这里。</p></div>
+        )}
+      </div>
+    </nav>
+  );
+}
+
+function LeftRail({
+  collapsed,
+  selectedCode,
+  activePrice,
+  activeChange,
+  onToggle,
+  onSelect,
+}: {
+  collapsed: boolean;
+  selectedCode: string | null;
+  activePrice?: number;
+  activeChange?: number;
+  onToggle: () => void;
+  onSelect: (code: string) => void;
+}) {
+  return (
+    <aside className={`left-rail ${collapsed ? "collapsed" : ""}`} aria-label="左侧收藏栏">
+      <header className="left-rail-topbar">
+        <a className="brand" href="#top" aria-label="低位承接研究台首页">
+          <span className="brand-mark">承</span>
+          <span className="brand-copy"><strong>低位承接研究台</strong><small>Price absorption research</small></span>
+        </a>
+        <button className="rail-toggle" type="button" aria-expanded={!collapsed} aria-controls="favorite-stock-panel" title={collapsed ? "展开左侧栏" : "收起左侧栏"} onClick={onToggle}>
+          <SidebarSimpleIcon aria-hidden="true" size={18} weight="regular" />
+          <span className="sr-only">{collapsed ? "展开左侧栏" : "收起左侧栏"}</span>
+        </button>
+      </header>
+      <div id="favorite-stock-panel" hidden={collapsed}>
+        <WatchlistSidebar selectedCode={selectedCode} activePrice={activePrice} activeChange={activeChange} onSelect={onSelect} />
+      </div>
+      {collapsed && <span className="collapsed-rail-label" aria-hidden="true">自选股票</span>}
+    </aside>
+  );
+}
+
+function CenterTopbar({
+  sourceLabel,
+  realtimeStatus = "disabled",
+}: {
+  sourceLabel: string;
+  realtimeStatus?: RealtimeConnectionStatus;
+}) {
+  return (
+    <header className="topbar" aria-label="行情数据状态">
+      <div className="topbar-note" data-realtime-status={realtimeStatus}>
+        <span className={`status-dot status-${realtimeStatus}`} aria-hidden="true" />
+        {sourceLabel}
+      </div>
+    </header>
+  );
+}
+
+function ReservedRightRail({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <aside className={`right-rail ${collapsed ? "collapsed" : ""}`} aria-label="右侧预留区域">
+      <header className="right-rail-topbar">
+        <span className="right-rail-title"><strong>信息面板</strong><small>Reserved panel</small></span>
+        <button className="rail-toggle" type="button" aria-expanded={!collapsed} aria-controls="reserved-right-panel" title={collapsed ? "展开右侧栏" : "收起右侧栏"} onClick={onToggle}>
+          <SidebarSimpleIcon aria-hidden="true" mirrored size={18} weight="regular" />
+          <span className="sr-only">{collapsed ? "展开右侧栏" : "收起右侧栏"}</span>
+        </button>
+      </header>
+      <div id="reserved-right-panel" className="right-rail-placeholder" hidden={collapsed}><span>右侧区域已预留</span></div>
+    </aside>
+  );
+}
+
 export default function Home() {
   const [stockCode, setStockCode] = useState(STOCKS[0].code);
   const [period, setPeriod] = useState(120);
+  const [adjustmentBasis, setAdjustmentBasis] = useState<AdjustmentBasis>("qfq");
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [importedData, setImportedData] = useState<Candle[] | null>(null);
   const [importName, setImportName] = useState("");
+  const [remoteData, setRemoteData] = useState<Candle[]>([]);
+  const [dataMeta, setDataMeta] = useState<DataMeta | null>(null);
+  const [loadError, setLoadError] = useState<{ requestKey: string; message: string } | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [leftRailCollapsed, setLeftRailCollapsed] = useState(false);
+  const [rightRailCollapsed, setRightRailCollapsed] = useState(false);
 
   const stock = STOCKS.find((item) => item.code === stockCode) ?? STOCKS[0];
-  const allData = useMemo(
-    () => importedData ?? generateSeries(stock),
-    [importedData, stock],
+  const requestKey = `${stock.instrumentId}:${adjustmentBasis}:${retryNonce}`;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const query = new URLSearchParams({
+      instrument_id: stock.instrumentId,
+      adjustment_basis: adjustmentBasis,
+    });
+    fetch(`/api/chart-daily-bars?${query}`, { signal: controller.signal })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "真实行情加载失败");
+        return payload;
+      })
+      .then((payload) => {
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        const parsed = rows.map((row: Record<string, unknown>) => ({
+          date: String(row.trading_date ?? ""),
+          open: Number(row.open),
+          high: Number(row.high),
+          low: Number(row.low),
+          close: Number(row.close),
+          volume: Number(row.volume),
+          sourceId: String(row.source_id ?? "unknown"),
+          comparisonStatus: String(row.comparison_status ?? "unknown"),
+        })).filter((item: Candle) =>
+          item.date &&
+          [item.open, item.high, item.low, item.close, item.volume].every(Number.isFinite),
+        ).sort((a: Candle, b: Candle) => a.date.localeCompare(b.date));
+        if (parsed.length < 20) throw new Error("真实行情不足 20 个交易日");
+        setRemoteData(parsed);
+        setLoadError(null);
+        setDataMeta({
+          requestKey,
+          dataVersion: typeof payload.data_version === "string" ? payload.data_version : null,
+          asOf: String(payload.as_of ?? ""),
+          cacheStatus: String(payload.cache_status ?? "unknown"),
+          sourceId: parsed[parsed.length - 1].sourceId ?? "unknown",
+          comparisonStatus: parsed[parsed.length - 1].comparisonStatus ?? "unknown",
+        });
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === "AbortError") return;
+        setLoadError({
+          requestKey,
+          message: error instanceof Error ? error.message : "真实行情加载失败",
+        });
+      });
+    return () => controller.abort();
+  }, [adjustmentBasis, requestKey, stock.instrumentId]);
+
+  const currentRemoteData = dataMeta?.requestKey === requestKey ? remoteData : [];
+  const currentError = loadError?.requestKey === requestKey ? loadError.message : "";
+  const realtime = useRealtimeQuote(
+    stock.instrumentId,
+    !importedData && currentRemoteData.length >= 2,
   );
-  const allIndicator = useMemo(() => calculateIndicator(allData), [allData]);
+  const completedData = importedData ?? currentRemoteData;
+  const allData = useMemo(
+    () => importedData ?? mergeRealtimeCandle(currentRemoteData, realtime.quote),
+    [currentRemoteData, importedData, realtime.quote],
+  );
+  const allIndicator = useMemo(
+    () => alignFormalIndicators(allData, completedData),
+    [allData, completedData],
+  );
+
+  function selectStock(code: string) {
+    setStockCode(code);
+    setImportedData(null);
+    setImportName("");
+    setHoverIndex(null);
+  }
+
+  const layoutClassName = [
+    "app-layout",
+    leftRailCollapsed ? "left-collapsed" : "",
+    rightRailCollapsed ? "right-collapsed" : "",
+  ].filter(Boolean).join(" ");
+
+  if (!importedData && allData.length < 2) {
+    return (
+      <main className="page-shell">
+        <div className={layoutClassName}>
+          <LeftRail collapsed={leftRailCollapsed} selectedCode={stockCode} onToggle={() => setLeftRailCollapsed((value) => !value)} onSelect={selectStock} />
+          <div className="content-column">
+            <CenterTopbar sourceLabel="mootdx-cf 真实日线" realtimeStatus="connecting" />
+            <section className="workspace data-state" id="top" aria-live="polite">
+              {!currentError ? (
+                <><div className="data-state-line" /><div className="data-state-line short" /><p>正在读取真实日线，R2 SQL 冷查询可能需要数秒。</p></>
+              ) : (
+                <><h2>暂时无法显示真实行情</h2><p>{currentError}</p><button type="button" onClick={() => setRetryNonce((value) => value + 1)}>重新读取</button></>
+              )}
+            </section>
+          </div>
+          <ReservedRightRail collapsed={rightRailCollapsed} onToggle={() => setRightRailCollapsed((value) => !value)} />
+        </div>
+      </main>
+    );
+  }
+
   const from = Math.max(0, allData.length - period);
   const data = allData.slice(from);
   const indicator = allIndicator.slice(from);
-  const ma5 = movingAverage(allData.map((item) => item.close), 5).slice(from);
+  const completedCloses = completedData.map((item) => item.close);
+  const movingAverages = MOVING_AVERAGE_PERIODS.map((movingAveragePeriod) => ({
+    period: movingAveragePeriod,
+    values: (() => {
+      const formalValues = fullWindowMovingAverage(completedCloses, movingAveragePeriod);
+      const byDate = new Map(
+        completedData.map((item, index) => [item.date, formalValues[index] ?? null]),
+      );
+      return data.map((item) => byDate.get(item.date) ?? null);
+    })(),
+  }));
   const activeIndex = hoverIndex ?? data.length - 1;
   const active = data[activeIndex];
   const activeIndicator = indicator[activeIndex];
   const latest = data[data.length - 1];
   const previous = data[data.length - 2] ?? latest;
-  const change = (latest.close / previous.close - 1) * 100;
+  const activeRealtimeQuote = importedData ? null : realtime.quote;
+  const displayPrice = activeRealtimeQuote?.last ?? latest.close;
+  const change = activeRealtimeQuote && activeRealtimeQuote.previousClose > 0
+    ? (activeRealtimeQuote.last / activeRealtimeQuote.previousClose - 1) * 100
+    : (latest.close / previous.close - 1) * 100;
   const latestSignal = [...indicator].reverse().findIndex((point) => point.confirm);
   const signalIndex = latestSignal < 0 ? -1 : indicator.length - 1 - latestSignal;
 
@@ -197,8 +490,11 @@ export default function Home() {
   const pricePlotHeight = PRICE_HEIGHT - TOP - BOTTOM;
   const lows = data.map((item) => item.low);
   const highs = data.map((item) => item.high);
-  const rawMin = Math.min(...lows);
-  const rawMax = Math.max(...highs);
+  const visibleMovingAverageValues = movingAverages.flatMap(({ values }) =>
+    values.filter((value): value is number => value !== null),
+  );
+  const rawMin = Math.min(...lows, ...visibleMovingAverageValues);
+  const rawMax = Math.max(...highs, ...visibleMovingAverageValues);
   const margin = (rawMax - rawMin) * 0.08;
   const priceMin = rawMin - margin;
   const priceMax = rawMax + margin;
@@ -214,13 +510,6 @@ export default function Home() {
     const pointerX = (event.clientX - box.left) / box.width * CHART_WIDTH;
     const nextIndex = Math.round((pointerX - LEFT) / plotWidth * data.length - 0.5);
     setHoverIndex(Math.max(0, Math.min(data.length - 1, nextIndex)));
-  }
-
-  function handleStockChange(event: ChangeEvent<HTMLSelectElement>) {
-    setStockCode(event.target.value);
-    setImportedData(null);
-    setImportName("");
-    setHoverIndex(null);
   }
 
   async function handleCsv(event: ChangeEvent<HTMLInputElement>) {
@@ -243,39 +532,44 @@ export default function Home() {
 
   return (
     <main className="page-shell">
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="低位承接研究台首页">
-          <span className="brand-mark">承</span>
-          <span><strong>低位承接研究台</strong><small>Price absorption research</small></span>
-        </a>
-        <div className="topbar-note"><span className="status-dot" aria-hidden="true" />本地计算 · 无未来函数</div>
-      </header>
+      <div className={layoutClassName}>
+        <LeftRail
+          collapsed={leftRailCollapsed}
+          selectedCode={importedData ? null : stockCode}
+          activePrice={importedData ? undefined : displayPrice}
+          activeChange={importedData ? undefined : change}
+          onToggle={() => setLeftRailCollapsed((value) => !value)}
+          onSelect={selectStock}
+        />
+        <div className="content-column">
+          <CenterTopbar
+            sourceLabel={importedData ? "本地 CSV" : realtime.message}
+            realtimeStatus={importedData ? "disabled" : realtime.status}
+          />
 
-      <section className="hero" id="top">
-        <div>
-          <p className="eyebrow">日线级别 · 技术研究</p>
-          <h1>把“主力吸货”拆成<br /><em>看得见的承接证据</em></h1>
-          <p className="hero-copy">用阶段新低、下探幅度、收盘位置与成交量共同衡量低位承接，避免只凭一根神秘柱线下结论。</p>
-        </div>
-        <div className="hero-summary">
-          <span>当前观察</span>
-          <strong>{importedData ? "CSV 数据" : `${stock.name} ${stock.code}`}</strong>
-          <small>{importName || `${stock.market} · 演示日线`}</small>
-        </div>
-      </section>
-
-      <section className="workspace" aria-label="股票走势图和指标图">
+      <section
+        className="workspace"
+        id="top"
+        aria-label="股票走势图和指标图"
+        data-series-fingerprint={seriesFingerprint(allData)}
+        data-series-size={allData.length}
+        data-realtime-status={importedData ? "disabled" : realtime.status}
+        data-realtime-event-id={activeRealtimeQuote?.eventId ?? ""}
+        data-realtime-observed-at={activeRealtimeQuote?.observedAt ?? ""}
+      >
         <div className="toolbar">
           <div className="security-title">
             <span className="market-tag">{importedData ? "CSV" : stock.market}</span>
             <div><h2>{importedData ? importName.replace(/\.csv$/i, "") : stock.name}</h2><span>{importedData ? "本地导入数据" : stock.code}</span></div>
           </div>
           <div className="price-summary">
-            <strong className={change >= 0 ? "price-up" : "price-down"}>{formatNumber(latest.close)}</strong>
+            <strong className={change >= 0 ? "price-up" : "price-down"}>{formatNumber(displayPrice)}</strong>
             <span className={change >= 0 ? "price-up" : "price-down"}>{change >= 0 ? "+" : ""}{formatNumber(change)}%</span>
           </div>
           <div className="toolbar-actions">
-            <label className="select-wrap"><span className="sr-only">选择股票</span><select value={stockCode} onChange={handleStockChange} disabled={Boolean(importedData)}>{STOCKS.map((item) => <option value={item.code} key={item.code}>{item.name} {item.code}</option>)}</select></label>
+            <div className="basis-switch" aria-label="选择复权口径">
+              {ADJUSTMENT_BASES.map((item) => <button type="button" disabled={Boolean(importedData)} className={adjustmentBasis === item.value ? "active" : ""} key={item.value} onClick={() => { setAdjustmentBasis(item.value); setHoverIndex(null); }}>{item.label}</button>)}
+            </div>
             <div className="period-switch" aria-label="选择图表周期">
               {PERIODS.map((item) => <button className={period === item.value ? "active" : ""} key={item.value} onClick={() => { setPeriod(Math.min(item.value, allData.length)); setHoverIndex(null); }}>{item.label}</button>)}
             </div>
@@ -283,34 +577,75 @@ export default function Home() {
           </div>
         </div>
 
+        {!importedData && dataMeta && (
+          <div className="provenance-strip" aria-label="行情数据血缘">
+            <span>正式投影</span>
+            <span>源 {dataMeta.sourceId}</span>
+            <span>对照 {dataMeta.comparisonStatus}</span>
+            <span>版本 {dataMeta.dataVersion?.slice(0, 12) ?? "未提供"}</span>
+            <span>缓存 {dataMeta.cacheStatus}</span>
+            <span>截面 {dataMeta.asOf.slice(0, 19).replace("T", " ")} UTC</span>
+            {activeRealtimeQuote && (
+              <>
+                <span>实时源 tencent</span>
+                <span>状态 {activeRealtimeQuote.marketSession}</span>
+                <span>盘中蜡烛未确认</span>
+              </>
+            )}
+          </div>
+        )}
+
         <div className="quote-strip" aria-live="polite">
-          <span>{active.date}</span><span>开 <b>{formatNumber(active.open)}</b></span><span>高 <b>{formatNumber(active.high)}</b></span><span>低 <b>{formatNumber(active.low)}</b></span><span>收 <b>{formatNumber(active.close)}</b></span><span>量 <b>{formatVolume(active.volume)}</b></span><span className="ma-label">MA5 <b>{formatNumber(ma5[activeIndex])}</b></span>
+          <span>{active.date}</span><span>开 <b>{formatNumber(active.open)}</b></span><span>高 <b>{formatNumber(active.high)}</b></span><span>低 <b>{formatNumber(active.low)}</b></span><span>收 <b>{formatNumber(active.close)}</b></span><span>量 <b>{formatVolume(active.volume)}</b></span>
+          {active.unconfirmed && <span className="unconfirmed-label">盘中未确认</span>}
+          {movingAverages.map(({ period: movingAveragePeriod, values }) => (
+            <span className={`ma-label ma-label-${movingAveragePeriod}`} key={movingAveragePeriod}>
+              MA{movingAveragePeriod} <b>{values[activeIndex] === null ? "—" : formatNumber(values[activeIndex])}</b>
+            </span>
+          ))}
         </div>
 
-        <div className="chart-stack">
+          <div className="chart-stack">
           <div className="chart-heading">
-            <div><span className="section-number">01</span><h3>每日价格走势</h3></div>
-            <div className="legend"><span className="legend-up" />上涨 <span className="legend-down" />下跌 <span className="legend-ma" />MA5</div>
+            <div><h3>每日价格走势</h3>{latest.unconfirmed && <small className="intraday-note">末根为盘中实时蜡烛</small>}</div>
+            <div className="legend" aria-label="价格图例">
+              <span className="legend-item"><span className="legend-swatch legend-up" />上涨</span>
+              <span className="legend-item"><span className="legend-swatch legend-down" />下跌</span>
+              {movingAverages.map(({ period: movingAveragePeriod, values }) => (
+                <span className={`legend-item legend-value legend-value-${movingAveragePeriod}`} key={movingAveragePeriod}>
+                  <span className={`legend-swatch legend-ma-${movingAveragePeriod}`} />
+                  MA{movingAveragePeriod}
+                  <b>{values[activeIndex] === null ? "—" : formatNumber(values[activeIndex])}</b>
+                </span>
+              ))}
+            </div>
           </div>
 
-          <svg className="chart price-chart" viewBox={`0 0 ${CHART_WIDTH} ${PRICE_HEIGHT}`} role="img" aria-label={`${stock.name}日线蜡烛图`} onPointerMove={onPointerMove} onPointerLeave={() => setHoverIndex(null)}>
+          <svg className="chart price-chart" viewBox={`0 0 ${CHART_WIDTH} ${PRICE_HEIGHT}`} role="img" aria-label={`${stock.name}日线蜡烛图，包含MA5、MA10、MA20、MA30和MA60均线`} onPointerMove={onPointerMove} onPointerLeave={() => setHoverIndex(null)}>
             {priceTicks.map((tick) => { const y = yPrice(tick); return <g key={tick}><line className="grid-line" x1={LEFT} x2={CHART_WIDTH - RIGHT} y1={y} y2={y} /><text className="axis-label" x={CHART_WIDTH - RIGHT + 12} y={y + 4}>{formatNumber(tick)}</text></g>; })}
             {dateTickIndexes.map((index) => <g key={index}><line className="grid-line vertical" x1={xAt(index)} x2={xAt(index)} y1={TOP} y2={PRICE_HEIGHT - BOTTOM} /><text className="date-label" x={xAt(index)} y={PRICE_HEIGHT - 7} textAnchor="middle">{formatDate(data[index].date)}</text></g>)}
-            <polyline className="ma-line" points={ma5.map((value, index) => `${xAt(index)},${yPrice(value)}`).join(" ")} />
             {data.map((item, index) => {
               const up = item.close >= item.open;
               const x = xAt(index);
               const bodyTop = yPrice(Math.max(item.open, item.close));
               const bodyBottom = yPrice(Math.min(item.open, item.close));
-              return <g className={up ? "candle up" : "candle down"} key={item.date}><line x1={x} x2={x} y1={yPrice(item.high)} y2={yPrice(item.low)} /><rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={Math.max(1.5, bodyBottom - bodyTop)} /></g>;
+              const className = ["candle", up ? "up" : "down", item.realtime ? "realtime-candle" : ""].filter(Boolean).join(" ");
+              return <g className={className} data-date={item.date} data-open={item.open} data-high={item.high} data-low={item.low} data-close={item.close} data-volume={item.volume} data-unconfirmed={item.unconfirmed ? "true" : "false"} key={item.date}><line x1={x} x2={x} y1={yPrice(item.high)} y2={yPrice(item.low)} /><rect x={x - candleWidth / 2} y={bodyTop} width={candleWidth} height={Math.max(1.5, bodyBottom - bodyTop)} /></g>;
             })}
+            {movingAverages.map(({ period: movingAveragePeriod, values }) => (
+              <polyline
+                className={`ma-line ma-line-${movingAveragePeriod}`}
+                key={movingAveragePeriod}
+                points={values.flatMap((value, index) => value === null ? [] : `${xAt(index)},${yPrice(value)}`).join(" ")}
+              />
+            ))}
             {hoverIndex !== null && <line className="crosshair" x1={xAt(hoverIndex)} x2={xAt(hoverIndex)} y1={TOP} y2={PRICE_HEIGHT - BOTTOM} />}
             <rect className="pointer-layer" x={LEFT} y={TOP} width={plotWidth} height={pricePlotHeight} />
           </svg>
 
           <div className="chart-divider" />
           <div className="chart-heading indicator-heading">
-            <div><span className="section-number">02</span><h3>低位承接强度</h3></div>
+            <div><h3>低位承接强度</h3></div>
             <div className="indicator-readout"><span>当前</span><strong>{formatNumber(activeIndicator.score, 1)}</strong><small>{activeIndicator.score >= 60 ? "强承接" : activeIndicator.score >= 30 ? "观察" : "中性"}</small></div>
           </div>
 
@@ -325,25 +660,18 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="evidence-grid" aria-label="指标解释">
-        <article className="method-card">
-          <p className="eyebrow">指标方法</p><h2>一次可信的承接，至少要留下四项证据。</h2>
-          <p>指标只在创出近 38 日新低时启动，再用 ATR 归一化下探幅度，并结合收盘收复程度和相对成交量。结果经 3 日指数平滑后限制在 0 至 100。</p>
-          <div className="formula-line" aria-label="指标计算关系"><span>阶段新低</span><i>×</i><span>下探幅度</span><i>×</i><span>收盘位置</span><i>×</i><span>相对量能</span></div>
-        </article>
-        <article className="factor-card">
-          <div className="factor-card-head"><div><p className="eyebrow">光标日拆解</p><h3>{active.date}</h3></div>{activeIndicator.confirm && <span className="confirm-pill">确认信号</span>}</div>
+      <section className="factor-card" aria-label="光标日指标拆解">
+          <div className="factor-card-head"><div><h2>指标拆解</h2><span>{active.date}</span></div>{activeIndicator.confirm && <span className="confirm-pill">确认信号</span>}</div>
+          <div className="factor-grid">
           <div className="factor-row"><span>收盘位置</span><div><i style={{ width: `${Math.min(activeIndicator.closePosition * 100, 100)}%` }} /></div><b>{formatNumber(activeIndicator.closePosition * 100, 0)}%</b></div>
           <div className="factor-row"><span>相对量能</span><div><i style={{ width: `${Math.min(activeIndicator.volumeRatio / 2 * 100, 100)}%` }} /></div><b>{formatNumber(activeIndicator.volumeRatio, 2)}×</b></div>
           <div className="factor-row"><span>承接强度</span><div><i style={{ width: `${activeIndicator.score}%` }} /></div><b>{formatNumber(activeIndicator.score, 1)}</b></div>
-          <p className="signal-note">{signalIndex >= 0 ? `窗口内最近一次确认出现在 ${data[signalIndex].date}。` : "当前窗口没有满足全部确认条件的日期。"}</p>
-        </article>
+          </div>
+          <p className="signal-note">{active.unconfirmed ? "盘中实时蜡烛仅用于观察，正式指标继续使用已完成日线。" : signalIndex >= 0 ? `窗口内最近一次确认出现在 ${data[signalIndex].date}。` : "当前窗口没有满足全部确认条件的日期。"}</p>
       </section>
-
-      <aside className="disclaimer">
-        <strong>研究边界</strong><p>本页识别的是价格和成交量留下的低位承接迹象，不等同于真实大单资金流，也不构成投资建议。演示行情为模拟数据；实盘判断请导入复权后的日线数据。</p><span>CSV 列顺序：date, open, high, low, close, volume</span>
-      </aside>
-      <footer><span>低位承接研究台</span><span>2026 · Daily research view</span></footer>
+        </div>
+        <ReservedRightRail collapsed={rightRailCollapsed} onToggle={() => setRightRailCollapsed((value) => !value)} />
+      </div>
     </main>
   );
 }
