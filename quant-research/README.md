@@ -1,5 +1,13 @@
 # A 股价格预测与交易计划研究
 
+2026-09-23 event-model overlay: Added a point-in-time post-model overlay that preserves the
+complete token-model control ranking and separately freezes event-window and confirmed-event
+rankings. The initial shadow score combines 70% model-return percentile, 20% event score and
+10% downside/agreement quality. Events must be known before the first forecast session and
+pass explicit window, status and risk gates. Immutable bundles retain lineage, diagnostics and
+a mature-outcome review command. This does not retrain or promote the model and does not create
+orders. See [event and model overlay](docs/event-model-overlay-20260923.md).
+
 2026-09-22 event radar MVP: Added an append-only, point-in-time event revision store,
 official SSE and CNInfo periodic-report capture, a 60-day research radar, completed-close MA5 and
 overextension gates, conservative pre/post event studies, source-integrity audits and a
@@ -103,7 +111,8 @@ macOS 上 LightGBM 需要 libomp。本机已安装 Homebrew libomp 23.1.0。Ligh
 
 ## 已实现的接口
 
-CLI 提供 pool、pool-audit、freeze、audit、folds、run、demo、report。每个接口可以加 --help 查看参数。
+CLI 提供 pool、pool-audit、freeze、audit、folds、run、demo、report、event-overlay 和
+event-overlay-review。每个接口可以加 --help 查看参数。
 
     uv run --locked quant-research pool
     uv run --locked quant-research pool-audit /path/to/snapshot --output artifacts/new-pool-audit.json

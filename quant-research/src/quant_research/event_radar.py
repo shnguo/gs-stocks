@@ -16,6 +16,11 @@ POSITIVE_SCORE_FIELDS = (
     "price_confirmation",
 )
 PENALTY_FIELDS = ("crowding_penalty", "gap_penalty", "liquidity_penalty")
+EMPTY_RADAR_COLUMNS = [
+    "event_id", "event_type", "scope", "instrument_id", "title", "scheduled_date",
+    "actual_date", "available_at", "status", "event_score", "score_complete",
+    "radar_state", "confirmation_passed", "reward_risk", "blockers",
+]
 
 
 def event_score(event: Mapping[str, object]) -> dict[str, object]:
@@ -228,7 +233,7 @@ def build_radar(events: Iterable[Mapping[str, object]], bars: pd.DataFrame,
         decision = classify_event(event, tech, as_of_date)
         rows.append({**event, **(tech or {}), **decision})
     if not rows:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=EMPTY_RADAR_COLUMNS)
     result = pd.DataFrame(rows)
     result["priority_rank"] = result.priority.map({"high": 0, "medium": 1, "low": 2,
                                                    "none": 3}).fillna(4)

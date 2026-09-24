@@ -10,7 +10,7 @@ import pandas as pd
 from .config import load_config
 from .fixtures import create_fixture
 from .splits import Fold, rolling_folds
-from .storage import Snapshot, freeze, write_json
+from .storage import Snapshot, file_hash, freeze, write_json
 from .universe import audit_snapshot
 
 
@@ -101,6 +101,19 @@ def main() -> None:
     p.add_argument("radar", type=Path)
     p.add_argument("--radar-date", required=True)
     p.add_argument("--completed-through")
+    p.add_argument("--output", type=Path, required=True)
+    p = sub.add_parser("event-overlay",
+                       help="combine a frozen model ranking with a point-in-time event radar")
+    p.add_argument("run", type=Path)
+    p.add_argument("radar", type=Path)
+    p.add_argument("--overlay-config", type=Path, default=Path(__file__).resolve().parents[2] /
+                   "configs/event-overlay-v1.json")
+    p.add_argument("--output", type=Path, required=True)
+    p = sub.add_parser("event-overlay-review",
+                       help="score mature control and event-overlay shadow rankings")
+    p.add_argument("bundle", type=Path)
+    p.add_argument("realized", type=Path)
+    p.add_argument("--top-n", type=int)
     p.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     config = load_config(args.config)
@@ -226,6 +239,57 @@ def main() -> None:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(digest, encoding="utf-8")
         print(json.dumps({"output": str(args.output.resolve())}))
+    elif args.command == "event-overlay":
+        from .event_overlay import (
+            build_event_overlay,
+            load_overlay_config,
+            write_event_overlay_bundle,
+        )
+        run_info_path = args.run / "run.json"
+        ranking_path = args.run / "ranking.csv"
+        radar_metadata_path = args.radar.with_suffix(args.radar.suffix + ".json")
+        for path in [run_info_path, ranking_path, args.radar, radar_metadata_path,
+                     args.overlay_config]:
+            if not path.is_file():
+                raise FileNotFoundError(f"required event-overlay input is missing: {path}")
+        run_info = json.loads(run_info_path.read_text())
+        radar_metadata = json.loads(radar_metadata_path.read_text())
+        outputs, metadata = build_event_overlay(
+            _read_frame(ranking_path),
+            _read_frame(args.radar),
+            signal_date=run_info["signal_date"],
+            horizon_dates=run_info["horizon_dates"],
+            decision_at=radar_metadata["as_of"],
+            config=load_overlay_config(args.overlay_config),
+        )
+        lineage = {
+            "model_run": str(args.run.resolve()),
+            "model_run_json_sha256": file_hash(run_info_path),
+            "model_ranking_sha256": file_hash(ranking_path),
+            "event_radar": str(args.radar.resolve()),
+            "event_radar_sha256": file_hash(args.radar),
+            "event_radar_metadata_sha256": file_hash(radar_metadata_path),
+            "overlay_config": str(args.overlay_config.resolve()),
+            "overlay_config_sha256": file_hash(args.overlay_config),
+        }
+        if (args.run / "manifest.json").is_file():
+            lineage["model_run_manifest_sha256"] = file_hash(args.run / "manifest.json")
+        metadata["lineage"] = lineage
+        result = write_event_overlay_bundle(args.output, outputs, metadata)
+        print(json.dumps({
+            "output": str(result.resolve()),
+            "event_overlay_instruments": metadata["event_overlay_instruments"],
+            "confirmed_event_instruments": metadata["confirmed_event_instruments"],
+        }))
+    elif args.command == "event-overlay-review":
+        from .event_overlay import review_event_overlay
+        if args.output.exists():
+            raise FileExistsError("event overlay reviews use new output paths")
+        result = review_event_overlay(
+            args.bundle, _read_frame(args.realized), top_n=args.top_n
+        )
+        write_json(args.output, result)
+        print(json.dumps({"output": str(args.output.resolve()), "arms": result["arms"]}))
     elif args.command == "run":
         from .experiment import run_experiment
         from .report import render_report

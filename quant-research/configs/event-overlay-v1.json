@@ -1,0 +1,28 @@
+{
+  "version": "event-overlay-v1",
+  "weights": {
+    "model": 0.7,
+    "event": 0.2,
+    "risk": 0.1
+  },
+  "risk_weights": {
+    "downside": 0.5,
+    "agreement": 0.5
+  },
+  "minimum_event_score": 50,
+  "post_event_max_calendar_days": 7,
+  "hard_blockers": [
+    "event_cancelled",
+    "event_postponed",
+    "event_score_incomplete",
+    "event_score_below_minimum",
+    "scheduled_event_overdue",
+    "insufficient_completed_price_history",
+    "price_data_stale",
+    "price_overextended",
+    "reward_risk_not_defined",
+    "reward_risk_below_two",
+    "first_post_event_close_pending"
+  ],
+  "top_n": 20
+}
