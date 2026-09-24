@@ -1,0 +1,62 @@
+{
+  "protocol_id": "token-profile-transfer-v1",
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "evaluation": {
+    "name": "development2025aprjul",
+    "dates": [
+      "2025-04-01",
+      "2025-07-30"
+    ],
+    "signal_dates": 76,
+    "rows_per_date": 32,
+    "inputs_per_seed": 2432,
+    "split": "2025q2-evaluation.npy"
+  },
+  "horizons": [
+    2,
+    5
+  ],
+  "lookback": 60,
+  "sampling": {
+    "samples": 64,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "seed": 17,
+    "batch_rows": 4
+  },
+  "minimum_legal_draws": 16,
+  "profile_source": "artifacts/token-refreshed-calibration-20260915-v1/research-profile.json",
+  "selected_vintage": "2024h2",
+  "control": "Original through-2021 predictors with their original 2023 H1 interval factors",
+  "cohort": "Common usable stock-date/horizon inputs across both vintages within each seed. Same cohort for raw distributions, calibrated pipelines and calibration-only comparison.",
+  "comparisons": {
+    "profile_transfer": [
+      "old_calibrated",
+      "refreshed_calibrated"
+    ],
+    "refreshed_calibration": [
+      "refreshed_raw",
+      "refreshed_calibrated"
+    ],
+    "raw_distribution": [
+      "old_raw",
+      "refreshed_raw"
+    ]
+  },
+  "primary": "Date-equal maximum-high/minimum-low MAE and nominal 80% interval coverage and score at two and five days; report targets individually and equally averaged.",
+  "secondary": "Range forecast, raw-distribution CRPS, interval width, lower/upper miss rates, usable input and path fractions.",
+  "bootstrap": {
+    "block_dates": 10,
+    "replicates": 2000,
+    "seed": 314159
+  },
+  "decision": "Assess direction, magnitude, target and seed consistency and local regressions together. Do not reject a useful change solely because one confidence interval crosses zero. Record transfer limitations separately from earlier demonstrated improvements.",
+  "frozen": "Predictor and decoder weights, sampling, both calibration fits and factor-to-checkpoint bindings are fixed before generation. No neural-network training, calibration fitting or evaluation-based retuning.",
+  "sealed_holdout_start": "2025-08-07",
+  "interpretation": "Later development-window transfer for this frozen combined profile; this period was examined by earlier model experiments, so it is not an untouched final test. Official tokenizer pretraining coverage remains unresolved. No formal future coverage guarantee."
+}

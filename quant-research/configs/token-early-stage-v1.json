@@ -1,0 +1,27 @@
+{
+  "version": "token-early-stage-v1",
+  "output": "artifacts/token-early-stage-20260921-v1",
+  "source": "artifacts/token-three-ideas-20260917-v1",
+  "price_input": "artifacts/kronos-inputs-20260914-v3",
+  "source_arm": "indicators_ranking",
+  "source_mode": "paired",
+  "seeds": [17, 29, 43],
+  "samples": 64,
+  "chunk_rows": 2048,
+  "minimum_legal_paths": 16,
+  "cost": 0.0025,
+  "top_n": 20,
+  "weights": {
+    "overheat_penalty": 0.35,
+    "early_return": 0.70,
+    "early_quality": 0.30,
+    "combined_return": 0.10,
+    "combined_execution": 0.35,
+    "combined_early": 0.35,
+    "combined_downside": 0.20
+  },
+  "bootstrap_replicates": 2000,
+  "bootstrap_block_dates": 10,
+  "decision_rule": "A candidate is historically useful when executable-return improvement is positive on more than half of dates and Top20 overextension falls. Confidence intervals are descriptive and do not veto a majority-date improvement.",
+  "limitations": "Retrospective development dates were already used by earlier experiments and are not a sealed holdout. The frozen cohort covers 71 archived dates and the source artifact's eligible universe, not every A-share ever listed. First-session open and later daily high are executable-price approximations; daily bars cannot determine intraday order, fill probability or capacity. The stage score is causal and fixed before this run, but its thresholds remain research assumptions. No model checkpoint, live pointer, scheduler or production ranking is changed by this validation."
+}

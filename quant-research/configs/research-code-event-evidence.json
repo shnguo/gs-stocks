@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "purpose": "reviewed_identity_evidence_not_complete_mapping",
+  "complete_history_verified": false,
+  "events": [
+    {
+      "old_code": "300114.SZ",
+      "new_code": "302132.SZ",
+      "old_name": "中航电测",
+      "new_name": "中航成飞",
+      "event_kind": "security_code_and_name_change",
+      "effective_date": "2025-02-17",
+      "published_date": "2025-02-14",
+      "published_at": null,
+      "source": "Hong Kong Exchanges and Clearing, CT/015/25",
+      "source_url": "https://www.hkex.com.hk/-/media/HKEX-Market/Services/Circulars-and-Notices/Participant-and-Members-Circulars/SEHK/2025/cc_SEHK_CTCSC_015_2025.pdf",
+      "interpretation": "Old-code inactive status is a code transition, not evidence of issuer delisting. Day-level effective date is documented; exact publication time is not supplied.",
+      "applied_to_training_snapshot": false,
+      "remaining_validation": "Compare historical bars under both aliases and stitch exactly once around the effective date; verify corporate-action continuity."
+    }
+  ]
+}

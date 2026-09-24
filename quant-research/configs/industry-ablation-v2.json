@@ -1,0 +1,29 @@
+{
+  "protocol_id": "industry-ablation-v2",
+  "arms": {
+    "industry10": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ]
+  },
+  "reference": "Frozen learned27 from plan-value-v1; same dates, labels, plan grid, costs, tree parameters and calibration",
+  "minimum_peers": 5,
+  "features": "Known indicator, cohort peer count, industry means of return1/5/20 and volatility20, and stock-minus-industry values",
+  "source_vintage": "Retrospectively reconstructed dated BaoStock snapshots; provider update date is not independently certified original publication time",
+  "missing_policy": "Keep unknown industry and BSE rows; known flag0, peer count0, other fields missing; no current-day classification backfill",
+  "peer_policy": "Same signal-date full input cohort; includes self consistently with market ablations; minimum five peers",
+  "promotion": false,
+  "snapshot_cadence": "weekly-earliest-required-day",
+  "max_snapshot_age_days": 6,
+  "source_frequency": "Official weekly Monday update; retain earliest required date within ISO week",
+  "target_dates_preserved": 587,
+  "source_dates": 255
+}

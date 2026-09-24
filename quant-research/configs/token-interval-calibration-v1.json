@@ -1,0 +1,78 @@
+{
+  "protocol_id": "token-interval-calibration-v1",
+  "seed": 17,
+  "forecast_seeds": [
+    17,
+    29,
+    43
+  ],
+  "horizons": [
+    2,
+    5
+  ],
+  "calibration": {
+    "name": "calibration2023h1",
+    "dates": [
+      "2023-01-01",
+      "2023-07-01"
+    ],
+    "rows_per_date": 16
+  },
+  "evaluations": [
+    {
+      "name": "evaluation2023h2",
+      "dates": [
+        "2023-07-01",
+        "2024-01-01"
+      ],
+      "rows_per_date": 32,
+      "reuse": "artifacts/tokenizer-temporal-20260915-v1"
+    },
+    {
+      "name": "evaluation2024h2",
+      "dates": [
+        "2024-07-01",
+        "2025-01-01"
+      ],
+      "rows_per_date": 32
+    }
+  ],
+  "fit": {
+    "method": "date-equal empirical 80th percentile of median-centered scaled residuals",
+    "coverage": 0.8,
+    "epsilon_pp": 1e-06,
+    "minimum_dates": 80,
+    "minimum_rows": 1000,
+    "widen_only": true,
+    "grouping": [
+      "predictor_seed",
+      "horizon",
+      "target"
+    ],
+    "lower_support": {
+      "maximum": -100.0,
+      "minimum": -100.0,
+      "range": 0.0
+    },
+    "coverage_guarantee": false
+  },
+  "controls": "Same adapted-decoder paths and usable rows for raw and calibrated intervals; median, predictor, decoder and sampler unchanged; no calibrated CRPS claim because only the central interval is calibrated.",
+  "eligibility": "Known complete horizon and at least 16 legal draws out of 64, using all adapted-decoder usable inputs. This differs from earlier original/adapted common-input comparisons.",
+  "acceptance": {
+    "primary_horizon": 2,
+    "coverage_band": [
+      0.75,
+      0.85
+    ],
+    "coverage_each_target_in_each_window": true,
+    "mean_interval_score_delta_ci_upper_at_most": 0.0,
+    "all_seeds_interval_score_noninferior": true,
+    "median_mae_exactly_unchanged": true,
+    "five_day": "Separate secondary decision under same conditions",
+    "default_promotion": false
+  },
+  "bootstrap_block_dates": 10,
+  "bootstrap_replicates": 2000,
+  "sealed_holdout_start": "2025-08-07",
+  "interpretation": "Retrospective research, not untouched data. 2023 H1 appeared in earlier sampler selection and later windows in earlier research. Official tokenizer pretraining coverage unresolved. No iid or conformal coverage guarantee."
+}

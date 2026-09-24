@@ -1,0 +1,40 @@
+{
+  "version": "token-early-stage-matched-v1",
+  "output": "artifacts/token-early-stage-matched-20260922-v1",
+  "source": "artifacts/token-early-stage-20260921-v2",
+  "forecast_source": "artifacts/token-three-ideas-20260917-v1",
+  "price_input": "artifacts/kronos-inputs-20260914-v3",
+  "source_arm": "indicators_ranking",
+  "source_mode": "paired",
+  "primary_specification": "strict_top20",
+  "specifications": {
+    "strict_top20": {
+      "treated_quantile": 0.80,
+      "control_quantile": 0.50,
+      "predicted_rank_caliper": 0.025,
+      "volatility_rank_caliper": 0.10,
+      "liquidity_rank_caliper": 0.10
+    },
+    "wide_top20": {
+      "treated_quantile": 0.80,
+      "control_quantile": 0.50,
+      "predicted_rank_caliper": 0.05,
+      "volatility_rank_caliper": 0.15,
+      "liquidity_rank_caliper": 0.15
+    },
+    "strict_top10": {
+      "treated_quantile": 0.90,
+      "control_quantile": 0.50,
+      "predicted_rank_caliper": 0.025,
+      "volatility_rank_caliper": 0.10,
+      "liquidity_rank_caliper": 0.10
+    }
+  },
+  "bootstrap_replicates": 5000,
+  "bootstrap_block_dates": 10,
+  "minimum_matched_dates": 50,
+  "minimum_known_pairs": 1000,
+  "maximum_mean_rank_gap": 0.05,
+  "decision_rule": "The early-stage score has incremental return value only if the primary matched sample has positive mean executable-return difference on more than half of dates, non-worse mean adverse excursion, and acceptable post-match balance. Lower-tail and risk improvements are retained separately even when the return criterion fails.",
+  "limitations": "The 71 dates are retrospective development dates already used by earlier research, not a sealed holdout. Matching controls observed forecast rank, historical volatility, liquidity, date and market segment, but cannot remove unobserved confounding. Daily high and low data do not establish intraday event order or actual fills. Matching and treatment definitions are fixed in the protocol before outcomes are evaluated. No model, live report pointer or scheduler is changed."
+}

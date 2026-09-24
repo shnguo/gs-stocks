@@ -1,0 +1,114 @@
+{
+  "protocol_id": "tokenizer-decoder-temporal-transfer-v1",
+  "seed": 17,
+  "device": "mps",
+  "lookback": 60,
+  "horizon": 5,
+  "horizons": [
+    2,
+    5
+  ],
+  "clip": 5.0,
+  "fold": {
+    "name": "2023h2_fixed_weights",
+    "train": [
+      "2016-01-01",
+      "2022-01-01"
+    ],
+    "selection": [
+      "2022-01-01",
+      "2022-07-01"
+    ],
+    "evaluation": [
+      "2023-07-01",
+      "2024-01-01"
+    ]
+  },
+  "decoder_objectives": [
+    "price_consistency"
+  ],
+  "decoder_training": {
+    "minimum_epochs": 8,
+    "maximum_epochs": 16,
+    "patience": 3,
+    "batch_size": 256,
+    "stocks_per_date_per_epoch": 32,
+    "learning_rate": 3e-05,
+    "weight_decay": 0.01
+  },
+  "loss": {
+    "normalized_huber_beta": 1.0,
+    "extrema_huber_beta_pp": 1.0,
+    "extrema_weight": 0.25,
+    "ohlc_order_weight": 0.25
+  },
+  "decoder_selection_rows_per_date": 16,
+  "reconstruction_evaluation_rows_per_date": 32,
+  "selection": {
+    "minimum_extrema_mae_improvement": 0.05,
+    "minimum_legal_fraction_improvement": 0.02,
+    "maximum_normalized_mae_increase": 0.05,
+    "maximum_turnover_mae_increase": 0.05,
+    "primary": "Date-equal high/low/range MAE, equally averaged over two and five days",
+    "fallback": "frozen",
+    "evaluation_used_for_selection": false
+  },
+  "forecast_seeds": [
+    17,
+    29,
+    43
+  ],
+  "forecast_model": "dense_3720k",
+  "forecast_training": {
+    "minimum_epochs": 8,
+    "maximum_epochs": 24,
+    "patience": 4,
+    "stocks_per_date_per_epoch": 32,
+    "batch_size": 256,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.01
+  },
+  "forecast_selection_rows_per_date": 64,
+  "forecast_evaluation_rows_per_date": 32,
+  "sampling": {
+    "samples": 64,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0
+  },
+  "generation_batch_rows": 4,
+  "minimum_valid_fraction": 0.25,
+  "bootstrap_block_dates": 10,
+  "bootstrap_replicates": 2000,
+  "sealed_holdout_start": "2025-08-07",
+  "trainable_parts": [
+    "post_quant_embed",
+    "decoder",
+    "head"
+  ],
+  "frozen_parts": "Encoder, input embedding, quantization projection, binary codebook and coarse-only projection; verify bit-identical encoded tokens",
+  "targets": "Actual unclipped future OHLCVA on known prefixes; normalization statistics remain history-only. Clipping of encoder input remains at plus/minus five.",
+  "checkpoint_rule": "Save every epoch; select minimum reconstruction primary among epochs passing all frozen guards; retain unguarded best for diagnostic rejection analysis",
+  "prediction_gate": "Always evaluate the already selected fixed decoder and all three existing predictors. No checkpoint or sampler reselection.",
+  "interpretation": "Fixed-weight temporal transfer; 2023 H2 was used by earlier sampling research. Not an untouched test. Official tokenizer pretraining coverage remains unresolved.",
+  "scope": "Decoder-only adaptation first; no encoder/codebook change or post-generation price repair. Further representation changes require a separate controlled experiment.",
+  "refit": false,
+  "checkpoint_source": "artifacts/tokenizer-reconstruction-20260915-v1",
+  "confirmation": {
+    "primary_horizon": 2,
+    "require_all_seeds_lower_crps": true,
+    "require_mean_crps_difference_ci_below_zero": true,
+    "maximum_relative_median_mae_increase": 0.01,
+    "require_interval_score_noninferior": true,
+    "require_valid_path_fraction_nondecreasing": true,
+    "five_day": "Secondary horizon, assessed with same descriptive conditions",
+    "promotion": "Research evidence only; no daily model replacement"
+  },
+  "sensitivity": "Identical legal generated-token trajectories, at least 16 shared paths; secondary and no selection",
+  "comparison_targets": [
+    "maximum",
+    "minimum",
+    "range",
+    "mean"
+  ]
+}

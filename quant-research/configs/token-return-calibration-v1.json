@@ -1,0 +1,15 @@
+{
+  "version": "token-return-calibration-v1",
+  "source": "artifacts/token-three-ideas-20260917-v1",
+  "output": "artifacts/token-return-calibration-20260921-v2",
+  "arm": "indicators_ranking",
+  "seeds": ["17", "29", "43", "ensemble"],
+  "minimum_training_dates": 20,
+  "ridge": 0.01,
+  "top_n": 20,
+  "bootstrap_block_dates": 3,
+  "bootstrap_replicates": 2000,
+  "cost": 0.0025,
+  "protocol": "Fixed residual ridge head using predicted return, trailing 20-session adjusted-close volatility and their interaction. Each date has equal total fitting weight. For each forecast, fit only known five-session labels ending strictly before its signal. First 20 mature dates are warm-up. Fit on native eligibility; apply identical head to native and paired universes. No parameter or feature search. This reuses previously inspected development dates and is not a new holdout. Final full-history heads are not evaluated in-sample. No automatic live promotion.",
+  "daily_store": "artifacts/token-return-calibration-daily-v1"
+}

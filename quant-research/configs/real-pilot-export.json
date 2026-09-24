@@ -1,0 +1,38 @@
+{
+  "master": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-baostock-rust-stock-basic-20260907-v2",
+  "calendar": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-baostock-rust-calendar-20260907-v2",
+  "instruments": [
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-baostock-rust-600036-daily-20260907-v2",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-baostock-rust-600036-factor-20260907-v1"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.000001-daily",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.000001-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.600053-daily-v2",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.600053-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.600070-daily-v2",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.600070-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.000004-daily-v2",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.000004-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.300059-daily",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.300059-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.688001-daily",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sh.688001-adjust_factor"
+    },
+    {
+      "daily": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.002594-daily",
+      "factor": "/Users/guo/Documents/stocks/quant-research/artifacts/p1-real-pilot-captures-20260907/sz.002594-adjust_factor"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+schema_version = 3
+universe_scope = "all_a_shares"
+universe_catalog = "../data/universes/full-a-share-20260907-v2/manifest.json"
+timezone = "Asia/Shanghai"
+signal_time = "20:00"
+exchanges = ["XSHG", "XSHE", "XBSE"]
+training_risk_policy = "include"
+# These exclusions apply to simulated purchases, independently of training.
+exclude_statuses = ["ST", "*ST"]
+unknown_status_policy = "exclude"
+lookback = 60
+horizons = [5, 20]
+primary_horizon = 5
+min_history_years = 10
+seeds = [17, 29, 43]
+max_trials_per_horizon = 8
+
+[model]
+layers = 2
+hidden_size = 128
+heads = 4
+feedforward_size = 256
+dropout = 0.1
+learning_rate = 0.0003
+weight_decay = 0.01
+max_epochs = 30
+patience = 5
+batch_size = 256
+
+[portfolio]
+initial_cash = 1000000.0
+max_positions = 50
+max_weight = 0.02
+industry_deviation = 0.05
+adv_participation = 0.01
+max_drawdown = 0.15
+parameters_status = "research_defaults_not_personal_account"
+
+[validation]
+train_years = 5
+validation_years = 1
+development_test_years = 3
+holdout_months = 12
+refit_months = 3
+bootstrap_samples = 1000
+bootstrap_block_days = 20

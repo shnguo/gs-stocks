@@ -1,0 +1,77 @@
+{
+  "protocol_id": "token-training-refresh-v1",
+  "windows": {
+    "2023h2": {
+      "name": "2023h2",
+      "train": [
+        "2016-01-01",
+        "2023-01-01"
+      ],
+      "selection": [
+        "2023-01-01",
+        "2023-07-01"
+      ],
+      "evaluation": [
+        "2023-07-01",
+        "2024-01-01"
+      ]
+    },
+    "2024h2": {
+      "name": "2024h2",
+      "train": [
+        "2016-01-01",
+        "2024-01-01"
+      ],
+      "selection": [
+        "2024-01-01",
+        "2024-07-01"
+      ],
+      "evaluation": [
+        "2024-07-01",
+        "2025-01-01"
+      ]
+    }
+  },
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "control": "Predictors trained through 2021, selected on 2022 H1; exact archived adapted-decoder forecasts.",
+  "refreshed": "Expand training through the prior year, select CE-best on current H1. Reuse matching completed fits and generated tokens; train only 2024 seeds 29 and 43.",
+  "fixed": {
+    "parameters": 3720448,
+    "lookback": 60,
+    "output_loss": "equal five-day hierarchical token CE",
+    "decoder": "price_consistency epoch 15, trained through 2021",
+    "paths": 64,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "generation_seed": 17,
+    "batch_rows": 4,
+    "stocks_per_date": 32
+  },
+  "training": {
+    "minimum_epochs": 8,
+    "maximum_epochs": 24,
+    "patience": 4,
+    "learning_rate": 0.0003,
+    "weight_decay": 0.01,
+    "batch_size": 256,
+    "stocks_per_date_per_epoch": 32,
+    "selection_per_date": 64
+  },
+  "primary": "Date-equal MAE for maximum high and minimum low, reported individually and equally averaged, at two and five days.",
+  "secondary": [
+    "range MAE",
+    "CRPS",
+    "raw interval coverage and interval score",
+    "usable input fraction"
+  ],
+  "aggregation": "Paired common usable stock-date inputs within each seed; dates equal, three seeds equal. Report individual seeds and targets. Block bootstrap 10 dates, 2000 replicates, seed 314159.",
+  "interpretation": "Retain improvements effective across most tested scenarios, taking effect size and material regressions into account. Confidence intervals express uncertainty, not a requirement that every subgroup be significant. No post-result threshold tuning. This is retrospective research; both windows have been examined before. Refresh jointly changes recency, data quantity and selection period; does not isolate recency.",
+  "calibration": "Retained as preferred research interval method. Existing coefficients are checkpoint-specific and are not transferred to refreshed predictors. This experiment measures point forecasts and raw distributions.",
+  "sealed_holdout_start": "2025-08-07",
+  "new_training_runs": 2
+}

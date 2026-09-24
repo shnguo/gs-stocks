@@ -1,0 +1,21 @@
+{
+  "version": "start-stage-filter-v1",
+  "top_n": 20,
+  "min_return_5": 0.0,
+  "max_return_5": 0.10,
+  "min_return_10": 0.0,
+  "max_return_10": 0.08,
+  "min_return_20": -0.02,
+  "max_return_20": 0.12,
+  "min_ma20_distance": 0.0,
+  "max_ma20_distance": 0.05,
+  "min_volume_ratio_20": 0.9,
+  "max_volume_ratio_20": 2.5,
+  "min_pullback_5": -0.06,
+  "max_pullback_5": 0.005,
+  "min_early_stage_score": 0.50,
+  "max_extension_flags": 0,
+  "ranking": "Filter first, then rank by reference_price_net_return descending and early_stage_score descending.",
+  "status": "descriptive_risk_filter",
+  "limitation": "This list identifies modest right-side starts and removes extended moves. Historical tests do not show that it beats the unrestricted return ranking, so it remains a separate watchlist."
+}

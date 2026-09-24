@@ -1,0 +1,101 @@
+{
+  "protocol_id": "token-daily-history-v1",
+  "research_start": "2016-01-01",
+  "last_signal": "2025-07-22",
+  "last_label": "2025-07-29",
+  "sealed_holdout_start": "2025-08-07",
+  "lookback": 60,
+  "horizon": 5,
+  "seed": 17,
+  "pool_per_date": 192,
+  "train_per_date_per_epoch": 32,
+  "selection_per_date": 64,
+  "path_per_date": 32,
+  "batch_size": 256,
+  "encoding_batch_size": 512,
+  "min_epochs": 8,
+  "max_epochs": 24,
+  "patience": 4,
+  "min_delta": 1e-06,
+  "learning_rate": 0.0003,
+  "weight_decay": 0.01,
+  "path_samples": 32,
+  "temperature": 1.0,
+  "top_p": 0.9,
+  "top_k": 0,
+  "clip": 5.0,
+  "device": "mps",
+  "models": {
+    "dense_282k": {
+      "width": 48,
+      "layers": 2,
+      "heads": 4,
+      "max_context": 512,
+      "s1_bits": 10,
+      "s2_bits": 10,
+      "dropout": 0.1
+    },
+    "dense_3720k": {
+      "width": 256,
+      "layers": 4,
+      "heads": 8,
+      "max_context": 512,
+      "s1_bits": 10,
+      "s2_bits": 10,
+      "dropout": 0.1
+    }
+  },
+  "folds": [
+    {
+      "name": "2024h2",
+      "train": [
+        "2016-01-01",
+        "2024-01-01"
+      ],
+      "selection": [
+        "2024-01-01",
+        "2024-07-01"
+      ],
+      "evaluation": [
+        "2024-07-01",
+        "2025-01-01"
+      ]
+    },
+    {
+      "name": "2025q2",
+      "train": [
+        "2016-01-01",
+        "2025-01-01"
+      ],
+      "selection": [
+        "2025-01-01",
+        "2025-04-01"
+      ],
+      "evaluation": [
+        "2025-04-01",
+        "2025-07-30"
+      ]
+    }
+  ],
+  "loss_experiment_after_dense": {
+    "model": "dense_3720k",
+    "horizon_weights": [
+      1.0,
+      0.8,
+      0.6,
+      0.4,
+      0.2
+    ]
+  },
+  "checkpoint_selection": "Unweighted date-equal five-day token CE for all variants; same rule isolates training loss change",
+  "evaluation_horizons": [
+    2,
+    5
+  ],
+  "primary_loss_comparison": "Two-day extrema/range mean CRPS skill versus identical historical-volatility baseline, plus five-day tradeoff; no promotion from one metric",
+  "scope": "Expanded daily development history, frozen official tokenizer; no pretrained predictor weights, no trading promotion",
+  "pretraining_boundary": "Training history has no Kronos cutoff restriction. Frozen tokenizer provenance limits apply separately to retrospective evaluation.",
+  "bootstrap_block_dates": 10,
+  "bootstrap_replicates": 2000,
+  "minimum_legal_paths": 8
+}

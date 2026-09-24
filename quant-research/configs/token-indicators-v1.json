@@ -1,0 +1,50 @@
+{
+  "version": "token-indicators-v1",
+  "output": "artifacts/token-indicators-20260916-v1",
+  "profiles": "artifacts/token-midpoint-transfer-20260915-v1/profiles.json",
+  "owner": "midpoint",
+  "seeds": [
+    17
+  ],
+  "variants": [
+    "baseline",
+    "boll",
+    "macd",
+    "kdj",
+    "all"
+  ],
+  "training": [
+    "2020-01-01",
+    "2024-01-01"
+  ],
+  "selection": [
+    "2024-01-01",
+    "2024-07-01"
+  ],
+  "evaluation": [
+    "2024-07-01",
+    "2025-07-30"
+  ],
+  "train_per_date": 32,
+  "selection_per_date": 16,
+  "evaluation_per_date": 32,
+  "epochs": 4,
+  "batch_size": 256,
+  "learning_rate": 3e-05,
+  "midpoint_loss_weight": 0.05,
+  "samples": 64,
+  "forecast_batch": 4,
+  "device": "mps",
+  "cost": 0.0025,
+  "bootstrap_replicates": 1000,
+  "bootstrap_block_dates": 10,
+  "checkpoint_rule": "Fixed final epoch for every arm; selection CE is diagnostic only. No evaluation-based tuning.",
+  "cohort": "Exact saved row IDs from the preceding feature study. Same 60-day OHLCVA history in every arm; no external financial data and no extra pre-window history.",
+  "limitations": "Reused historical development dates; one seed and four-epoch continuation, not convergence or prospective validation. Same 60-day context means recursive indicators restart at the window boundary and can differ from a chart with years of warm-up. Archived price/adjustment-factor provenance and unresolved tokenizer pretraining overlap remain. No live checkpoint promotion.",
+  "ranking": "Median T low; modal path peak date in T+1..T+4, earliest tie; median high on that selected date. Rank sell/buy-1-cost. Evaluate actual high on that frozen date / actual T low-1-cost as an extrema scenario, not executable profit.",
+  "feature_family": "indicators",
+  "source_mode": "historical_price_indicators",
+  "cohort_source": "artifacts/token-features-20260916-v1",
+  "price_input": "artifacts/kronos-inputs-20260914-v3",
+  "feature_note": "BOLL(20,2), population standard deviation; MACD(12,26,9), first-close-seeded EMA, histogram DIF-DEA; KDJ(9,3,3), K/D seed 50. Indicators use only each sample's existing 60 historical bars. Missing warm-up and undefined zero-width ratios are masked. Features are invariant to uniform price rescaling. No future features, longer history, threshold trading rules or post-result parameter search."
+}

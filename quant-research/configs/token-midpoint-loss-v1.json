@@ -1,0 +1,43 @@
+{
+  "protocol_id": "token-midpoint-loss-v1",
+  "seeds": [17, 29, 43],
+  "training": {
+    "dates": ["2016-01-01", "2024-01-01"],
+    "continuation_epochs": 2,
+    "rows_per_date_per_epoch": 32,
+    "batch_size": 256,
+    "learning_rate": 0.00003,
+    "weight_decay": 0.01,
+    "gradient_clip": 1.0,
+    "checkpoint": "Fixed final epoch for both arms; no evaluation-based checkpoint selection"
+  },
+  "arms": {"ce": 0.0, "midpoint": 0.05},
+  "initialization": "Exact refreshed 2024H2 seed-matched checkpoints previously trained through 2023 and selected on 2024H1; optimizer reset equally in both arms",
+  "auxiliary": {
+    "objective": "Population CRPS of sampled midpoint at two and five days, equally weighted over known horizons",
+    "gradient": "Score-function estimate on real free-running discrete token paths, leave-one-out absolute-error baseline; no soft-token decoder and no future price context",
+    "rows_per_batch": 8,
+    "draws_per_row": 4,
+    "decoder": "Existing frozen price-consistency decoder",
+    "illegal_paths": "No path rejection or repair inside the loss; all finite generated midpoint draws enter the training risk. Evaluation retains the existing legal-path masks and reports coverage.",
+    "token_loss": "Existing equally weighted five-day coarse/fine CE unchanged"
+  },
+  "selection": {
+    "dates": ["2024-01-01", "2024-07-01"],
+    "rows_per_date": 8,
+    "metric": "Date-equal sampled-midpoint CRPS averaged over two/five-day horizons and three training seeds on a common cohort",
+    "rule": "Select lambda 0.05 only if its mean score is lower than matched CE continuation; otherwise lambda 0. No post-result coefficient search. Report endpoint, range and legal-path tradeoffs alongside the choice.",
+    "limitation": "2024H1 already selected the warm-start checkpoints; this is reused development validation"
+  },
+  "evaluation": {
+    "dates": ["2024-07-01", "2025-01-01"],
+    "rows_per_date": 32,
+    "rule": "Evaluate both predeclared arms after recording H1 selection; compare midpoint, endpoint, range and raw intervals. No 2025 outcome-based tuning."
+  },
+  "sampling": {"samples": 64, "batch_rows": 4, "seed": 17, "temperature": 1.0, "top_p": 1.0, "top_k": 0},
+  "minimum_legal_paths": 16,
+  "bootstrap": {"block_dates": 10, "replicates": 2000, "seed": 314159},
+  "unchanged": "3,720,448 parameter predictor architecture, history features, tokenizer, decoder, horizon CE weights, sampler and daily model; original calibration factors are not transferred to new checkpoints",
+  "interpretation": "Bounded two-epoch continuation experiment, not from-scratch convergence or an untouched final test. Retain previous improvements and interpret local regressions alongside magnitude and consistency.",
+  "sealed_holdout_start": "2025-08-07"
+}

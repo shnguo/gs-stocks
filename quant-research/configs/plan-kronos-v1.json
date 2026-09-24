@@ -1,0 +1,23 @@
+{
+  "protocol_id": "plan-kronos-v1",
+  "fold_indices": [13, 15],
+  "paper_pretraining_cutoff": "2024-06-30",
+  "cutoff_source": "https://arxiv.org/html/2508.02739v1",
+  "cutoff_evidence": "Paper Forecasting Task Setup states pretraining extends through June 2024; the exact downloaded checkpoint lacks an independently verified training manifest",
+  "identities_per_exchange": 64,
+  "identity_selection": "SHA256 seed17 ordering within exchange from first calibration date in fold13; no future outcomes or later surviving membership used",
+  "path_samples": 32,
+  "min_valid_paths": 8,
+  "min_filled_paths": 4,
+  "chunk_size": 64,
+  "seed": 17,
+  "device": "mps",
+  "calibration_min_dates": 4,
+  "comparison": "Same fixed stock-date-plan rows. Report full selected cohort and forecast availability; head metrics use the identical finite-forecast and known-label intersection across all three models. Preserve raw and calibrated comparisons",
+  "calibration_scope": "Kronos uses the selected identities on the same independent 12 dates; LightGBM/Transformer retain their original full-cohort calibration. Compare raw results separately; calibrated results compare deployed pipelines, not an isolated architecture effect",
+  "missing_paths": "Invalid or insufficient sampled paths abstain. Never create conditional return estimates for no sampled fills. Explicitly report valid path fraction and resolved fill counts",
+  "path_assumptions": "Forecast paths use hypothetical daily OHLC plan rules, no realized future bars or future price limits supplied. Daily-bar path validity does not establish exchange fills",
+  "adaptation": "Frozen native generative paths; no supervised Kronos fine-tuning in this comparison",
+  "sealed_holdout_start": "2025-08-07",
+  "quality_promotion": false
+}

@@ -1,0 +1,30 @@
+{
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "device": "mps",
+  "samples": 64,
+  "forecast_batch": 32,
+  "minimum_legal_paths": 16,
+  "cost": 0.0025,
+  "return_ranking_loss": {
+    "bags": 2,
+    "paths_per_bag": 8,
+    "scale_pp": 5.0,
+    "return_weight": 0.01,
+    "ranking_weight": 0.01,
+    "invalid_penalty": 10.0
+  },
+  "price_input": "artifacts/kronos-inputs-20260914-v3",
+  "midpoint_loss_weight": 0.05,
+  "version": "token-ranking-incremental-v1",
+  "experiment": "artifacts/token-ranking-20260916-v2",
+  "daily_run": "artifacts/daily-token-live-v1/runs/2026-09-15",
+  "output": "artifacts/token-ranking-incremental-20260917-v1",
+  "historical_replay": "artifacts/token-history-data-20260915-v1",
+  "learning_rate": 1e-05,
+  "training_batch": 256,
+  "forecast_inputs": 192
+}

@@ -1,0 +1,62 @@
+{
+  "protocol_id": "plan-value-v1",
+  "purpose": "step2 fixed-plan conditional net-return development experiment",
+  "fold_indices": [
+    1,
+    4,
+    7,
+    10,
+    13,
+    15
+  ],
+  "prior_exposure": "Different evaluation quarters from rolling-price-v1, but historical ranking research may have exposed them; not final untouched test",
+  "train_dates": 96,
+  "selection_dates": 8,
+  "calibration_dates": 12,
+  "evaluation_dates": 8,
+  "evaluation_stride_sessions": 5,
+  "candidate_grid": {
+    "entry_relative_to_signal_close": [
+      -0.02,
+      -0.01,
+      0
+    ],
+    "target_relative_to_buy": [
+      0.03,
+      0.06
+    ],
+    "stop_relative_to_buy": [
+      0.02,
+      0.04
+    ]
+  },
+  "horizon": "Buy valid on T only; T+1 settlement; exit no later than T+4 if observable and tradable under scenario assumptions",
+  "features": "27 existing signal-close features; one model per plan and target; no market or industry additions in this contrast",
+  "heads": [
+    "fill_probability",
+    "resolution_probability_given_fill",
+    "net_return_given_resolved_fill",
+    "loss_probability_given_resolved_fill",
+    "downside_given_resolved_fill"
+  ],
+  "iterations": 60,
+  "seed": 17,
+  "tree_parameters": {
+    "num_leaves": 15,
+    "min_child_samples": 100,
+    "learning_rate": 0.05,
+    "reg_lambda": 1,
+    "n_jobs": 4,
+    "early_stopping_rounds": 10
+  },
+  "calibration": "Date-weighted sigmoid probability recalibration; date-weighted mean residual correction for return/downside, fitted only on calibration; retain raw versus calibrated predictions",
+  "label_policy": "Unknown fill or return stays missing; known unfilled order has zero order return but no conditional filled-return label; daily stop-target ambiguity excluded from main mean/risk labels and separately reported with conservative stop-first stress results",
+  "missingness": "Conditional mean pertains to resolved non-ambiguous fills, not all fills; resolution prediction is reported separately. Unknown results cannot be silently assigned the learned resolved-fill mean",
+  "primary_evaluation": "All fixed stock-date-plan rows: fill Brier/log loss, resolution Brier/log loss, conditional return MAE/MSE and predicted-versus-realized bin means, loss probability Brier, downside MAE; report label coverage and date-block uncertainty",
+  "decision_diagnostic": "Choose one plan by maximum calibrated fill_probability times conditional net return, requiring positive conditional return, fill_probability >= 0.3 and resolution_probability >= 0.9; this is a research score under resolved-fill assumptions, not unconditional expected return",
+  "baselines": "Date-weighted per-plan training empirical heads under identical calibration; compare learned choice and empirical choice on common dates and report selection/unknown coverage",
+  "cost_stress": "Double commission, minimum commission, tax and slippage; apply to unchanged chosen plans, preserving unknown states",
+  "promotion": "No daily recommendation promotion. Existing price-quality gate remains failed. Any claimed benefit must include calibration, cross-window stability, nontrivial selection coverage, unknown outcomes and stress costs",
+  "sealed_holdout_start": "2025-08-07",
+  "uncertainty": "2000 circular two-date block bootstraps within fixed evaluation windows; calibrated learned minus calibrated empirical Brier/MSE; not IID-stock significance"
+}

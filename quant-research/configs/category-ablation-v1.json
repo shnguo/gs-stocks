@@ -1,0 +1,18 @@
+{
+  "protocol_id": "category-ablation-v1",
+  "arms": {
+    "context_categories": ["industry_category", "identity_exchange", "identity_code_family"],
+    "stock_identity": ["stock_identity"]
+  },
+  "max_snapshot_age_days": 6,
+  "categorical_parameters": {"cat_smooth": 10.0, "cat_l2": 10.0, "min_data_per_group": 100, "max_cat_to_onehot": 4},
+  "dictionary": "Sorted training-partition categories only; absent or unseen=-1; no arbitrary magnitude ordering",
+  "primary": "Raw context-categories versus raw frozen 27-feature baseline on all 6 windows and all 48 dates",
+  "secondary": "Raw/calibrated stock-ID and context arms, seen/naturally-unseen stocks and exchange groups; no parameter search or cohort selection",
+  "baseline_choice": "Original verified plan-value 96/8/12/8 cohorts have complete matched past-only industry snapshots. This isolates category input, not the recent-label schedule; combine only after evidence.",
+  "identity_limits": "Exchange and coarse code family derive from canonical IDs, not current board names. SH68/SZ30 versus other A codes; historical Shenzhen SME/main combined. XBSE canonical identity may predate BSE establishment; not certified historical market membership.",
+  "industry_limits": "Retrospectively reconstructed dated industry snapshots; original publication timestamps unverified; missing BSE industry retained",
+  "unseen_limits": "Naturally new stock IDs only; no claim of randomized held-out-stock generalization or extrapolation if cohort sparse",
+  "promotion": "No promotion from this development ablation. Require stable return/risk calibration and meaningful cost-stressed plan results with unknown coverage before combination or forward test. No sealed data or automatic trading.",
+  "executable": false
+}

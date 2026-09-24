@@ -1,0 +1,49 @@
+{
+  "protocol_id": "token-pipeline-audit-v1",
+  "seed": 17,
+  "device": "mps",
+  "lookback": 60,
+  "horizon": 5,
+  "clip": 5.0,
+  "horizons": [2, 5],
+  "audit_folds": ["2024h2", "2025q2"],
+  "audit_rows_per_date": 32,
+  "sampling_selection_rows_per_date": 16,
+  "samples": 64,
+  "nested_sample_counts": [32, 64],
+  "generation_batch_rows": 4,
+  "minimum_valid_fraction": 0.25,
+  "samplers": {
+    "baseline": {"temperature": 1.0, "top_p": 0.9, "top_k": 0},
+    "full_distribution": {"temperature": 1.0, "top_p": 1.0, "top_k": 0},
+    "full_cooler": {"temperature": 0.9, "top_p": 1.0, "top_k": 0},
+    "full_warmer": {"temperature": 1.1, "top_p": 1.0, "top_k": 0}
+  },
+  "selection": {
+    "primary": "Date-equal mean high/low/range CRPS, equally averaged over 2/5-day horizons and selection folds",
+    "minimum_relative_improvement": 0.01,
+    "maximum_relative_mae_increase": 0.01,
+    "maximum_usable_coverage_drop": 0.01,
+    "require_interval_score_noninferior": true,
+    "fallback": "baseline",
+    "evaluation_may_select_settings": false
+  },
+  "new_fold": {
+    "name": "2023h2",
+    "train": ["2016-01-01", "2023-01-01"],
+    "selection": ["2023-01-01", "2023-07-01"],
+    "evaluation": ["2023-07-01", "2024-01-01"]
+  },
+  "confirmation_seeds": [17, 29, 43],
+  "confirmation_model": "dense_3720k",
+  "checkpoint_candidates": "Every second completed epoch plus CE-best; candidates selected on validation only",
+  "checkpoint_selection_rows_per_date": 8,
+  "confirmation_evaluation_rows_per_date": 32,
+  "training": {"minimum_epochs": 8, "maximum_epochs": 24, "patience": 4, "stocks_per_date_per_epoch": 32, "batch_size": 256, "learning_rate": 0.0003, "weight_decay": 0.01},
+  "bootstrap_block_dates": 10,
+  "bootstrap_replicates": 2000,
+  "sealed_holdout_start": "2025-08-07",
+  "scope": "Reconstruction diagnostics, validation-only sampling choice, then new chronological-window confirmation and checkpoint-selection comparison; further data/capacity work is gated on these findings",
+  "reconstruction_interpretation": "Actual future tokens are used only for offline distortion measurement; this is not a forecast or a strict lower bound on forecast error",
+  "new_window_interpretation": "New to this token-path evaluation protocol; retrospective development data with unresolved tokenizer pretraining provenance"
+}

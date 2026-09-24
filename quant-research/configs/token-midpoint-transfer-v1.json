@@ -1,0 +1,24 @@
+{
+  "protocol_id": "token-midpoint-transfer-v1",
+  "seeds": [17, 29, 43],
+  "calibration": {"dates": ["2024-01-01", "2024-07-01"], "rows_per_date": 16, "inputs": 1792, "dates_count": 112},
+  "evaluation": {"dates": ["2025-04-01", "2025-07-30"], "rows_per_date": 32, "inputs": 2432, "dates_count": 76},
+  "sampling": {"samples": 64, "temperature": 1.0, "top_p": 1.0, "top_k": 0, "seed": 17, "batch_rows": 4},
+  "minimum_legal_paths": 16,
+  "fit": {"coverage": 0.8, "epsilon_pp": 0.000001, "minimum_dates": 80, "minimum_rows": 1000, "lower_support": {"maximum": -100.0, "minimum": -100.0, "range": 0.0}},
+  "comparisons": {
+    "pipeline_transfer": ["current_calibrated", "midpoint_calibrated"],
+    "loss_transfer": ["ce_calibrated", "midpoint_calibrated"],
+    "midpoint_calibration": ["midpoint_raw", "midpoint_calibrated"],
+    "ce_calibration": ["ce_raw", "ce_calibrated"],
+    "raw_pipeline": ["current_raw", "midpoint_raw"],
+    "raw_loss": ["ce_raw", "midpoint_raw"]
+  },
+  "cohort": "Common usable inputs across current, CE continuation and midpoint continuation within each seed and horizon; same cohort for raw and calibrated variants and midpoint scores",
+  "bootstrap": {"block_dates": 10, "replicates": 2000, "seed": 314159},
+  "frozen": "All predictor and decoder weights and the selected loss coefficient 0.05 are fixed. Fit 36 new factors only on 2024 H1, bind them to checkpoints, and freeze before any 2025 generation or scoring. Current profile factors and saved transfer paths are reused exactly.",
+  "calibration_expansion": "Use 16 stocks per date, matching the current profile and satisfying the existing 1000-row minimum; the prior 8-stock validation set had only 896 inputs. Generate complete matched calibration sets under the existing seed/offset convention.",
+  "decision": "Retain useful gains by magnitude, seed and target consistency, while documenting regressions. A confidence interval crossing zero alone does not reject an improvement. No evaluation-based factor or weight retuning.",
+  "interpretation": "Retrospective transfer on an already examined 2025 development window. Calibration H1 was reused for checkpoint and loss selection. Tokenizer pretraining coverage is unresolved; no formal coverage or profitability guarantee.",
+  "sealed_holdout_start": "2025-08-07"
+}

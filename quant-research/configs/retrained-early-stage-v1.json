@@ -1,0 +1,25 @@
+{
+  "version": "retrained-early-stage-v1",
+  "output": "artifacts/retrained-early-stage-20260922-v1",
+  "experiment": "artifacts/token-history-retrained-20260922-v1",
+  "data": "artifacts/token-history-data-rebuilt-20260922-v1",
+  "price_input": "artifacts/kronos-inputs-20260914-v3",
+  "model": "dense_3720k_equal",
+  "folds": ["2024h2", "2025q2"],
+  "cost": 0.0025,
+  "minimum_legal_paths": 8,
+  "top_n": 10,
+  "weights": {
+    "overheat_penalty": 0.35,
+    "early_return": 0.70,
+    "early_quality": 0.30,
+    "combined_return": 0.10,
+    "combined_execution": 0.35,
+    "combined_early": 0.35,
+    "combined_downside": 0.20
+  },
+  "bootstrap_replicates": 2000,
+  "bootstrap_block_dates": 10,
+  "decision_rule": "Retain an improvement as useful when mean executable return improves on more than half of matched dates and overextension does not increase. Report risk improvements separately. Never promote automatically.",
+  "limitations": "Fresh one-seed models replace deleted historical weights. Each date contains an outcome-independent 32-stock evaluation sample, so Top10 results estimate ranking behavior within that sample rather than full-market live returns. Daily highs and lows are scenario prices and do not establish intraday order, fills, slippage or capacity."
+}

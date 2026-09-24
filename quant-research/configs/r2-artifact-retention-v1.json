@@ -1,0 +1,30 @@
+{
+  "version": "r2-artifact-retention-v1",
+  "package_max_bytes": 1073741824,
+  "single_file_max_bytes": 4294967296,
+  "completion_markers": [
+    "completed.json",
+    "ARCHIVE-MANIFEST.json",
+    "manifest.json"
+  ],
+  "excluded_names": [
+    "__pycache__",
+    "runner.lock",
+    "runner.pid"
+  ],
+  "excluded_suffixes": [
+    ".partial",
+    ".tmp"
+  ],
+  "required_archive_contents": [
+    "protocol and configuration",
+    "source hashes and frozen input manifests",
+    "model and optimizer checkpoints",
+    "forecast path chunks and their receipts",
+    "per-date rankings",
+    "aggregate metrics and reports",
+    "independent verification evidence",
+    "frozen source code"
+  ],
+  "policy": "An important experiment is complete only after every regular non-transient file is present in a content-addressed R2 package, every upload has been read back and restored, and the R2 catalog package has its own verified receipt."
+}

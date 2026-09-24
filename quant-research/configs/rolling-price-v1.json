@@ -1,0 +1,18 @@
+{
+  "protocol_id": "rolling-price-v1",
+  "purpose": "step1 temporal freshness and training-date-density development ablation",
+  "fold_indices": [2, 5, 8, 11, 14],
+  "arms": ["legacy24", "recent24", "recent96"],
+  "evaluation_dates": 10,
+  "evaluation_sampling": "first eligible date then every five exchange sessions; same stock-date cohort in all arms",
+  "recent_partitions": "selection and calibration start 50 and 25 sessions before first evaluation; train preceding year; five-day label purge",
+  "iterations": 60,
+  "seed": 17,
+  "primary_contrasts": ["recent24 versus legacy24 changes training and selection recency", "recent96 versus recent24 changes training date density only"],
+  "baseline_weighting": "equal signal dates for both empirical and volatility baselines",
+  "uncertainty": "2000 circular two-date block bootstraps within each of five fixed windows; no IID stock inference",
+  "thresholds": {"min_known_day5_fraction": 0.90, "min_exchange_known_fraction": 0.80},
+  "decision": "diagnostic ablation only; retain existing G2 failures; separately preregister decision experiment without recommendation promotion",
+  "holdout": "all labels strictly before 2025-08-07",
+  "features": "same 27 existing signal-close features; no simultaneous feature or architecture changes"
+}

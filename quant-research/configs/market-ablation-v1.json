@@ -1,0 +1,11 @@
+{
+  "protocol_id": "market-ablation-v1",
+  "purpose": "step3 market context feature ablation against the frozen 27-feature learned model",
+  "arms": {"market_state": [0,1,2,3,4,5,6,7], "relative_strength": [8,9,10,11], "combined": [0,1,2,3,4,5,6,7,8,9,10,11]},
+  "comparison": "same stock-date-plan rows, labels, 96 training dates, selection, calibration, model parameters and costs as plan-value-v1",
+  "source": "equal-weight signal-close available stock-input cohort; not an official index",
+  "primary": "conditional net-return MSE and calibration; secondary fill/loss Brier and downside MSE",
+  "uncertainty": "paired two-date blocks within six fixed development windows; three preregistered arms, no significance or promotion claim",
+  "industry": "excluded until dated source history is available; do not backfill current industry assignments",
+  "promotion": "diagnostic only; keep all failed arms and sealed holdout intact"
+}
