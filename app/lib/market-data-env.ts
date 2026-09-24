@@ -13,6 +13,27 @@ export function marketDataApiBearerToken(): string | null {
   return environmentString("MOOTDX_DATA_API_BEARER_TOKEN");
 }
 
+export function marketDataRealtimeApiBaseUrl(): string {
+  return (
+    environmentString("MOOTDX_REALTIME_API_BASE_URL") ?? marketDataApiBaseUrl()
+  ).replace(/\/$/u, "");
+}
+
+export function marketDataRealtimeTransport(): "websocket" | "polling" {
+  return environmentString("MOOTDX_REALTIME_TRANSPORT") === "polling"
+    ? "polling"
+    : "websocket";
+}
+
+export function marketDataApiIsLoopback(baseUrl = marketDataApiBaseUrl()): boolean {
+  try {
+    const hostname = new URL(baseUrl).hostname;
+    return hostname === "127.0.0.1" || hostname === "localhost" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 function environmentString(name: string): string | null {
   const value = Reflect.get(env, name);
   return typeof value === "string" && value.trim() ? value.trim() : null;

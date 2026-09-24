@@ -3,14 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   marketDataApiBaseUrl,
   marketDataApiBearerToken,
+  marketDataApiIsLoopback,
 } from "../../lib/market-data-env";
-
-const ALLOWED_INSTRUMENTS = new Set([
-  "cn.xshg.600036",
-  "cn.xshg.688008",
-  "cn.xshe.000333",
-  "cn.xshe.300059",
-]);
+import { isSupportedMarketInstrumentId } from "../../lib/stock-symbol";
 
 const ALLOWED_BASES = new Set(["none", "qfq", "hfq"]);
 function rowArray(payload: unknown): unknown[] | null {
@@ -29,12 +24,13 @@ export async function GET(request: NextRequest) {
   const instrumentId = request.nextUrl.searchParams.get("instrument_id") ?? "";
   const adjustmentBasis = request.nextUrl.searchParams.get("adjustment_basis") ?? "qfq";
 
-  if (!ALLOWED_INSTRUMENTS.has(instrumentId) || !ALLOWED_BASES.has(adjustmentBasis)) {
+  if (!isSupportedMarketInstrumentId(instrumentId) || !ALLOWED_BASES.has(adjustmentBasis)) {
     return NextResponse.json({ error: "不支持的股票或复权口径" }, { status: 400 });
   }
 
+  const baseUrl = marketDataApiBaseUrl();
   const token = marketDataApiBearerToken();
-  if (!token) {
+  if (!token && !marketDataApiIsLoopback(baseUrl)) {
     return NextResponse.json(
       { error: "真实行情服务尚未配置访问凭证" },
       { status: 503 },
@@ -47,20 +43,18 @@ export async function GET(request: NextRequest) {
     adjustment_basis: adjustmentBasis,
     limit: "250",
     mode: "latest",
+    projection: "chart-lite-v1",
   });
-  const baseUrl = marketDataApiBaseUrl();
   const upstreamUrl = `${baseUrl}/v1/chart/daily-bars/${instrumentId}?${query}`;
 
   try {
-    const headers = new Headers({
-      accept: "application/json",
-      authorization: `Bearer ${token}`,
-    });
+    const headers = new Headers({ accept: "application/json" });
+    if (token) headers.set("authorization", `Bearer ${token}`);
     const ifNoneMatch = request.headers.get("if-none-match");
     if (ifNoneMatch) headers.set("if-none-match", ifNoneMatch);
     const response = await fetch(upstreamUrl, {
       headers,
-      signal: AbortSignal.timeout(35_000),
+      signal: AbortSignal.timeout(5_000),
     });
     const responseHeaders = marketDataResponseHeaders(response);
     if (response.status === 304) {
@@ -68,9 +62,29 @@ export async function GET(request: NextRequest) {
     }
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
+      const cacheStatus = response.headers.get("x-mootdx-cache");
+      const warming = response.status === 503 && cacheStatus === "snapshot-miss";
+      const adjustmentUnavailable = response.status === 409 &&
+        cacheStatus === "adjustment-unavailable";
+      responseHeaders.set("cache-control", "private, no-store, max-age=0");
+      const retryAfter = response.headers.get("retry-after");
+      if (retryAfter) responseHeaders.set("retry-after", retryAfter);
       return NextResponse.json(
-        { error: "真实行情服务暂时不可用", upstream_status: response.status },
-        { status: 502 },
+        {
+          error: warming
+            ? "日线快照正在后台生成"
+            : adjustmentUnavailable
+              ? "该股票的复权因子尚未覆盖，已切换为不复权"
+              : "真实行情服务暂时不可用",
+          upstream_status: response.status,
+          retryable: warming,
+          retry_after_seconds: retryAfter ? Number(retryAfter) : null,
+          fallback_adjustment_basis: adjustmentUnavailable ? "none" : null,
+        },
+        {
+          status: warming ? 503 : adjustmentUnavailable ? 409 : 502,
+          headers: responseHeaders,
+        },
       );
     }
     const rows = rowArray(payload);
@@ -98,12 +112,24 @@ export async function GET(request: NextRequest) {
         ? payloadAsOf
         : response.headers.get("x-mootdx-as-of") ?? asOf.toISOString(),
       cache_status: response.headers.get("x-mootdx-cache") ?? "unknown",
+      adjustment_basis: adjustmentBasis,
+      generation_id: response.headers.get("x-mootdx-chart-generation"),
+      business_date: response.headers.get("x-mootdx-chart-business-date"),
+      stock_readiness: response.headers.get("x-mootdx-stock-readiness"),
+      market_readiness: response.headers.get("x-mootdx-market-readiness"),
+      available_adjustment_bases: adjustmentBases(
+        response.headers.get("x-mootdx-adjustment-bases"),
+      ),
     }, { headers: responseHeaders });
   } catch (error) {
-    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    const timedOut = error instanceof Error &&
+      ["TimeoutError", "AbortError"].includes(error.name);
     return NextResponse.json(
       { error: timedOut ? "真实行情查询超时，请重试" : "无法连接真实行情服务" },
-      { status: 502 },
+      {
+        status: 502,
+        headers: { "cache-control": "private, no-store, max-age=0" },
+      },
     );
   }
 }
@@ -120,9 +146,19 @@ function marketDataResponseHeaders(response: Response): Headers {
     "x-mootdx-as-of",
     "x-mootdx-cache",
     "x-mootdx-snapshot-refreshed-at",
+    "x-mootdx-chart-generation",
+    "x-mootdx-chart-business-date",
+    "x-mootdx-adjustment-bases",
+    "x-mootdx-stock-readiness",
+    "x-mootdx-market-readiness",
   ]) {
     const value = response.headers.get(name);
     if (value) headers.set(name, value);
   }
   return headers;
+}
+
+function adjustmentBases(value: string | null): string[] {
+  if (!value) return ["none", "qfq", "hfq"];
+  return value.split(",").map((item) => item.trim()).filter((item) => ALLOWED_BASES.has(item));
 }

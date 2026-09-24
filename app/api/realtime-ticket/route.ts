@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  marketDataApiBaseUrl,
   marketDataApiBearerToken,
+  marketDataApiIsLoopback,
+  marketDataRealtimeApiBaseUrl,
+  marketDataRealtimeTransport,
 } from "../../lib/market-data-env";
-
-const ALLOWED_INSTRUMENTS = new Set([
-  "cn.xshg.600036",
-  "cn.xshg.688008",
-  "cn.xshe.000333",
-  "cn.xshe.300059",
-]);
+import { isSupportedMarketInstrumentId } from "../../lib/stock-symbol";
 
 const SESSION_COOKIE = "mootdx_rt_sid";
 
@@ -20,21 +16,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "不允许跨站申请实时连接" }, { status: 403 });
   }
   const instrumentId = request.nextUrl.searchParams.get("instrument_id") ?? "";
-  if (!ALLOWED_INSTRUMENTS.has(instrumentId)) {
+  if (!isSupportedMarketInstrumentId(instrumentId)) {
     return NextResponse.json({ error: "该股票尚未开放实时行情" }, { status: 400 });
   }
+  const baseUrl = marketDataRealtimeApiBaseUrl();
   const token = marketDataApiBearerToken();
-  if (!token) {
+  const market = request.nextUrl.searchParams.get("market");
+  const providerSymbol = request.nextUrl.searchParams.get("provider_symbol");
+  const currency = request.nextUrl.searchParams.get("currency");
+  if (!validMapping(market, providerSymbol, currency)) {
+    return NextResponse.json({ error: "该股票缺少实时行情代码映射" }, { status: 400 });
+  }
+  if (marketDataRealtimeTransport() === "polling") {
+    return NextResponse.json(
+      { error: "本地 Rust 服务使用轮询模式", fallback: "polling" },
+      { status: 409 },
+    );
+  }
+  if (!token && !marketDataApiIsLoopback(baseUrl)) {
     return NextResponse.json({ error: "实时行情服务尚未配置访问凭证" }, { status: 503 });
   }
   const existingSessionId = request.cookies.get(SESSION_COOKIE)?.value;
   const sessionId = existingSessionId && /^[0-9a-f-]{36}$/u.test(existingSessionId)
     ? existingSessionId
     : crypto.randomUUID();
-  const baseUrl = marketDataApiBaseUrl();
   try {
-    const upstream = await fetch(
+    const upstreamUrl = new URL(
       `${baseUrl}/v1/realtime/tickets/${encodeURIComponent(instrumentId)}`,
+    );
+    upstreamUrl.searchParams.set("market", market);
+    upstreamUrl.searchParams.set("provider_symbol", providerSymbol);
+    upstreamUrl.searchParams.set("currency", currency);
+    const upstream = await fetch(
+      upstreamUrl,
       {
         method: "POST",
         headers: {
@@ -97,4 +111,19 @@ export async function POST(request: NextRequest) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validMapping(
+  market: string | null,
+  providerSymbol: string | null,
+  currency: string | null,
+): market is "cn" | "hk" | "us" {
+  if (
+    (market !== "cn" && market !== "hk" && market !== "us") ||
+    typeof providerSymbol !== "string" ||
+    !/^[A-Z0-9._-]{2,64}$/u.test(providerSymbol)
+  ) return false;
+  return (market === "cn" && currency === "CNY") ||
+    (market === "hk" && currency === "HKD") ||
+    (market === "us" && currency === "USD");
 }

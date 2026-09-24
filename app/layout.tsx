@@ -21,6 +21,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
+      <head>
+        <link
+          rel="preload"
+          as="fetch"
+          crossOrigin="anonymous"
+          fetchPriority="high"
+          href="/api/chart-daily-bars?instrument_id=cn.xshg.688008&adjustment_basis=none"
+        />
+        <link
+          rel="preload"
+          as="fetch"
+          crossOrigin="anonymous"
+          fetchPriority="high"
+          href="/api/realtime-quote?instrument_id=cn.xshg.688008"
+        />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>

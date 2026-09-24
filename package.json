@@ -8,9 +8,11 @@
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "dev:market-proxy": "node scripts/mootdx-preview-proxy.mjs",
+    "dev:local": "sh scripts/sync-preview-token-from-keychain.sh && node --env-file-if-exists=.dev.vars scripts/dev-local.mjs",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:proxy": "node --test tests/websocket-close.test.mjs tests/preview-proxy-response.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
