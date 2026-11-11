@@ -1,0 +1,23 @@
+{
+  "version": "research-review-v1",
+  "top_n": 20,
+  "cost_multipliers": [1.0, 2.0, 3.0],
+  "allow_synthetic_for_tests": false,
+  "matching": {
+    "minimum_dates": 50,
+    "minimum_pairs": 1000,
+    "calipers": {
+      "predicted_rank": 0.05,
+      "volatility_rank": 0.1,
+      "liquidity_rank": 0.1
+    }
+  },
+  "portfolio": {
+    "initial_cash": 1000000.0,
+    "max_positions": 20,
+    "max_weight": 0.05,
+    "industry_deviation": 0.05,
+    "adv_participation": 0.01,
+    "max_drawdown": 0.15
+  }
+}

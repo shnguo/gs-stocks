@@ -1,0 +1,28 @@
+{
+  "version": "shortlist-check-v1",
+  "output": "artifacts/shortlist-check-20261110-v1",
+  "us_config": "configs/us-factor-v2.json",
+  "pullback_config": "configs/pullback-check-v1.json",
+  "industry": "data/us/sec/industry-20261106.parquet",
+  "sizes": [10, 20],
+  "sector_cap_share": 0.2,
+  "random_paths": 1000,
+  "random_seed": 17,
+  "question": "Can the screen be cut to 10 or 20 stocks a month without giving up the edge of the group they are drawn from?",
+  "groups": {
+    "trend_all": "reference: the whole top fifth by drift_12_1 (pullback-check-v1 trend_all, about 200 stocks)",
+    "depth_0_10": "reference: top fifth with a last-21-session return in (-10%, 0%] (pullback-check-v1 depth_0_10, about 66 stocks)"
+  },
+  "rules": {
+    "top_drift": "the N highest drift_12_1 in the whole pool (the top of the screen ranking); also run at N = 50, the dashboard's default list. Parent group: trend_all",
+    "mild_drift": "PRIMARY at N = 20: the N highest drift_12_1 inside depth_0_10 (the order the screen already prints). Parent group: depth_0_10",
+    "mild_controlled": "the N highest controlled drift inside depth_0_10 (drift percentile residual on 12-1 momentum, volatility and traded value, as in the screen's controlled_drift_percentile)",
+    "mild_sector": "the N highest drift_12_1 inside depth_0_10, taken in drift order while skipping a stock once its Fama-French 12 sector already holds sector_cap_share x N names (2 of 10, 4 of 20); stocks without a sector share one bucket; if the caps run out first the list is shorter than N. Sector codes are current, not point-in-time",
+    "mild_lowvol": "the N lowest daily volatility (12-1 window) inside depth_0_10",
+    "mild_random": "reference: N names drawn at random from depth_0_10 each month, random_paths independent paths; shows what any N-stock pick from the group earns and how widely it scatters"
+  },
+  "small_groups": "When depth_0_10 holds fewer than N stocks the rule takes all of them; months with fewer than 5 picks are dropped (BasketBook rule).",
+  "evaluation": "Same as pullback-check-v1: monthly signal at index-membership month ends, next-open entry, equal weight, one-month hold, excess over the equal-weight pool, 0.05% one-way cost times basket turnover; 6-month block bootstrap 95% interval of the monthly net excess. Also reported for every rule: the paired monthly difference against its parent group with the same bootstrap interval, the worst single month, and where its annual net excess falls among the random paths of the same size.",
+  "decision_rule": "A shortlist rule counts as supported only if its one-month net-excess interval excludes zero AND its annual net excess is not below its parent group's. Being inside the random-pick range means the rule adds nothing beyond drawing names from the group. 11 rule-size baskets are tested together on about 117 months, so a single marginal pass is treated as weak. A supported rule may be added to the screen as a shortlist; unsupported rules are not.",
+  "note": "US index union only, 2017-2026, in-sample. All rules, sizes and the decision rule were fixed on 2026-11-10 before running and all are reported. Same data, cost and pool as pullback-check-v1; trend_all and depth_0_10 must reproduce that run's numbers."
+}

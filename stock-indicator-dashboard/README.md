@@ -1,6 +1,50 @@
 # 低位承接研究台
 
+## 每日研究分析
+
+/research 以分析质量为主：按信号日和冻结候选榜查看前20名，解释原排名、模型分歧和信号日趋势，对照逐日收盘预测与实测价格。页面展示价格字段、预测日、板块/行业/波动率分组的误差，提供沿用信号日收盘的朴素基线，并将迟发回顾与有效前瞻分开统计。
+
+独立刷新默认不运行成交模拟。从 quant-research 的 scripts/review_daily_research.py 导出至 public/research/latest.json；文件被 Git 忽略，网站发布时需提供这份导出。刷新摘要按钮只读取已导出数据。行情截止日期、上一完整交易日和缺口独立显示，未知结果保留为空。
+
+模型分位带未校准为概率区间，低价至未来高价参考收益与收盘预测准确度分开。辅助资料收起展示实际获取时间，不回填旧候选的行业/风险判断。操作、计算口径和后续顺序见 ../quant-research/docs/research-analysis-20260930.md。
+
 使用同一组真实日线绘制蜡烛图、MA5 和低位承接强度指标。网页通过服务端路由读取 mootdx-cf 的正式日线投影，浏览器不会收到数据 API 凭证。
+
+## 站点结构
+
+所有页面共用顶部导航（总览 / 行情 / 研究复盘 / 美股筛选），右侧显示 A股、港股、美股的交易时段（按交易所时间估算，未计节假日）。
+
+| 路径 | 内容 |
+|---|---|
+| / | 总览：交易时段、自选股票行情（实时报价未连接时显示最近收盘价）、最新研究复盘、美股筛选要点、各模块数据更新时间 |
+| /market | 行情：日线蜡烛图、低位承接强度指标、自选股票和实时行情；/market?instrument=编号 直接打开某只自选股票 |
+| /research | 研究复盘 |
+| /us-screen | 美股动量筛选 |
+
+共用样式在 app/site.css（设计变量、顶部导航、页面标题、卡片），共用组件在 app/components/。
+
+## 美股动量筛选
+
+/us-screen 展示 quant-research 的美股漂移动量筛选：漂移排名（可按行业筛选、按行业内或控制后百分位排序、只看近 1 个月上涨）、行业分布、“回调与困境反转”（上升趋势中的浅回调，和看财报的困境反转观察名单，后者带回测未通过的警告）、三种走势形态 × 四个时间段，每种方法的回测证据，以及“前瞻记录”（每一批筛选结果之后的实际表现，和回测分开记）。每只支持的股票可以直接加入自选，回到行情研究台查看走势。
+
+页面只读取 public/us-screen/latest.json，这个文件被 Git 忽略。更新步骤（在 quant-research 目录）：
+
+```bash
+uv run python scripts/us_screen.py configs/us-screen-v3.json --credentials-file /path/to/.env
+uv run python scripts/export_us_screen.py configs/us-screen-v3.json --dashboard ../stock-indicator-dashboard
+```
+
+“前瞻记录”读取 public/us-screen/scorecard.json（同样被 Git 忽略），没有这个文件时该标签页只显示提示。每次筛选后或每天运行一次：
+
+```bash
+uv run python scripts/us_scorecard.py configs/us-scorecard-v2.json --credentials-file /path/to/.env --dashboard ../stock-indicator-dashboard
+```
+
+批次到期（买入后 21 个交易日）前只显示临时估值；筛选结果要在下一个交易日开盘前生成，才算正式前瞻。
+
+“加入自选”先在行情目录里按代码查找该股票的目录编号，再写入自选；目录里还没有的代码会像左侧“添加股票”一样提交收录申请，完成后自动加入；按钮下方显示收录进度。生成历史走势通常要几分钟，失败时后台会在 15 分钟后重试，页面最多等 30 分钟；离开或刷新页面后，回到本页会继续等待同一个申请。本地运行需要用 npm run dev:local（它会同时启动 3101 端口的本地代理），只用 npm run dev 时自选服务无法连接。
+
+研究用排名，不是买卖建议。方法和局限见 ../quant-research/docs/us-screen-20261106.md。
 
 ## Prerequisites
 

@@ -1,0 +1,17 @@
+{
+  "version": "uptrend-check-v1",
+  "output": "artifacts/uptrend-check-20261106-v1",
+  "us_config": "configs/us-factor-v2.json",
+  "jump_sigma": 3.0,
+  "full_window": {"lookback": 252, "skip": 0, "min_traded": 200},
+  "averages": {"short": 50, "long": 200, "min_share": 0.8},
+  "variants": {
+    "drift_12_1": "reference: current screen score (skips the latest month)",
+    "drift_12_0": "drift over the full 12 months including the latest month",
+    "drift_12_1_above_ma50": "drift 12-1, but stocks above their 50-day average rank ahead of all others",
+    "drift_12_1_above_ma200": "drift 12-1, but stocks above their 200-day average rank ahead of all others",
+    "drift_12_0_above_ma50": "drift 12-0, stocks above their 50-day average first"
+  },
+  "diagnostic": "within the top fifth by drift_12_1, next-month return of stocks above vs below their 50-day average, against the universe",
+  "note": "US index union only. Variants fixed before running; all are reported. Gated variants put every stock above the average ahead of every stock below it, so their top fifth is the strongest drift among stocks in an uptrend."
+}

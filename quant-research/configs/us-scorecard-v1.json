@@ -1,0 +1,53 @@
+{
+  "version": "us-scorecard-v1",
+  "screen_config": "configs/us-screen-v2.json",
+  "output": "artifacts/us-scorecard",
+  "holding_sessions": 21,
+  "cost_one_way": 0.0005,
+  "min_stocks": 5,
+  "min_independent_runs": 12,
+  "price_check_tolerance": 0.05,
+  "rules": "Fixed on 2026-11-09 before any run had an outcome. Each frozen screen run is scored once: signal at the as-of close, buy every basket stock at the next session's open, sell at the open 21 sessions later (the backtest's one-month hold). A stock that stops trading is valued at its last traded close. Baskets are equal weight and pay the full 0.05% cost on both entry and exit (0.10%; the monthly backtest charged only the traded share, so this is stricter). Excess is the basket's net return minus (a) the equal-weight return of every scored stock in that run and (b) the benchmark ETF over the same opens. A run counts as prospective only if its manifest was written before its entry session opened (09:30 New York); runs written later are scored but reported separately and never enter the prospective record. Daily runs overlap, so the record also reports independent runs: the earliest run, then each next run whose entry is on or after the previous one's exit. No conclusion is drawn before min_independent_runs prospective independent runs have matured. Interim marks (entry open to the latest close) are shown for unfinished runs and never enter the record.",
+  "baskets": [
+    {
+      "key": "top_quintile",
+      "label": "漂移最强五分之一（主排名）",
+      "note": "回测验证的用法：每月持有漂移最强的五分之一，约 200 只。",
+      "column": "drift_quintile",
+      "equals": 5,
+      "primary": true,
+      "backtest": {"results": "artifacts/pullback-check-20261108-v1/results.json", "basket": "trend_all"}
+    },
+    {
+      "key": "top_50",
+      "label": "排名前 50（没有回测）",
+      "note": "页面默认显示的前 50 名。只买最前面几十只没有被回测检验过，波动会大得多。",
+      "column": "rank",
+      "max": 50
+    },
+    {
+      "key": "pullback_mild",
+      "label": "上升趋势中的浅回调",
+      "note": "漂移最强五分之一里近 1 个月跌 0–10% 的股票。回测超额和整个五分之一分不出差别。",
+      "column": "pullback_mild",
+      "equals": true,
+      "backtest": {"results": "artifacts/pullback-check-20261108-v1/results.json", "basket": "depth_0_10"}
+    },
+    {
+      "key": "fund_turnaround",
+      "label": "困境反转（看财报）观察名单",
+      "note": "回测没有通过（区间含零），只是观察名单。",
+      "column": "fund_turnaround",
+      "equals": true,
+      "backtest": {"results": "artifacts/turnaround-fundamental-20261108-v1/results.json", "basket": "beaten_improving_cash"}
+    },
+    {
+      "key": "fund_deteriorating",
+      "label": "基本面恶化（回避名单）",
+      "note": "股价深跌且基本面继续恶化。回测里跑输，这里越低说明回避越有道理；每次只有十来只。",
+      "column": "fund_deteriorating",
+      "equals": true,
+      "backtest": {"results": "artifacts/turnaround-fundamental-20261108-v1/results.json", "basket": "beaten_low_f"}
+    }
+  ]
+}

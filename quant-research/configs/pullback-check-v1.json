@@ -1,0 +1,30 @@
+{
+  "version": "pullback-check-v1",
+  "output": "artifacts/pullback-check-20261108-v1",
+  "us_config": "configs/us-factor-v2.json",
+  "jump_sigma": 3.0,
+  "trend": "top fifth of drift_12_1 (the current screen score) within the month's index-union pool",
+  "ma_days": 50,
+  "ma_min_share": 0.8,
+  "pullback_days": 21,
+  "recent_days": 5,
+  "pool_bottom_share": 0.3333,
+  "depth_cuts": [0.0, -0.10, -0.20],
+  "horizon_months": [1, 3],
+  "baskets": {
+    "trend_all": "reference: the whole top fifth by drift_12_1 (current screen)",
+    "trend_above_ma50": "top fifth, close above its 50-day average (no pullback)",
+    "pullback_ma50": "PRIMARY: top fifth, close below its 50-day average",
+    "pullback_1m": "top fifth, last-21-session return in the bottom third of the whole pool",
+    "depth_0_10": "top fifth, last-21-session return in (-10%, 0%]",
+    "depth_10_20": "top fifth, last-21-session return in (-20%, -10%]",
+    "depth_20_plus": "top fifth, last-21-session return at or below -20%",
+    "pullback_gap": "pullback_ma50 with at least one jump-down day (r - median < -3 robust sigma, sigma from the 252-session window) in the last 21 sessions",
+    "pullback_gentle": "pullback_ma50 with no jump-down day in the last 21 sessions",
+    "pullback_stabilized": "pullback_ma50 and last-5-session return > 0 (stopped falling)",
+    "pullback_still_falling": "pullback_ma50 and last-5-session return <= 0"
+  },
+  "evaluation": "Monthly signal at index-membership month ends, next-open entry, equal weight, one-month hold, excess over the equal-weight pool, 0.05% one-way cost times basket turnover; 6-month block bootstrap 95% interval of the monthly net excess. The 3-month horizon is a gross diagnostic (mean excess over the next three monthly holds, no costs).",
+  "decision_rule": "A basket counts as supported only if its one-month net-excess interval excludes zero AND its annual net excess beats trend_all. Supported baskets go into the screen as signals; the rest are shown, if at all, with a warning. 11 baskets are tested together, so a single marginal pass is treated as weak.",
+  "note": "US index union only, 2017-2026, in-sample. All baskets are fixed before running and all are reported. Same data, cost and pool as us-factor-v2 and uptrend-check-v1. pullback_ma50 repeats an earlier side diagnostic (uptrend-check-v1, +7.0%/yr gross of turnover cost) as a proper basket with costs."
+}

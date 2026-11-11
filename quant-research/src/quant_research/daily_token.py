@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import gc
+from contextlib import nullcontext
 from pathlib import Path
 
 import numpy as np
@@ -403,7 +404,7 @@ def review_prior(store, source):
     return summaries
 
 
-def cycle(source, store, cfg):
+def cycle(source, store, cfg, journal=None):
     """Call under the operator's process lock. Publish pointers only after completion."""
     store, source = Path(store), Path(source)
     meta = read(source / 'panel-h5/manifest.json')
@@ -440,7 +441,8 @@ def cycle(source, store, cfg):
             raise ValueError('Changed parent model')
     if file_hash(Path(profiles['decoder']['path'])) != profiles['decoder']['sha256']:
         raise ValueError('Changed decoder')
-    prepare_inputs(source, run / 'inputs', cfg, previous)
+    with journal.stage('prepare_model_inputs') if journal else nullcontext():
+        prepare_inputs(source, run / 'inputs', cfg, previous)
     info = read(run / 'inputs/input.json')
     arrays = load_arrays(run / 'inputs', 'train')
     decoder = load_tokenizer(Path(cfg['tokenizer_bundle']), cfg['device'])
@@ -450,14 +452,17 @@ def cycle(source, store, cfg):
     checkpoints = {}
     for seed in cfg['seeds']:
         dest = run / f'models/seed{seed}'
-        update_model(initial[str(seed)]['path'], dest, arrays, cfg, seed, decoder, info)
+        with journal.stage(f'train_seed_{seed}') if journal else nullcontext():
+            update_model(initial[str(seed)]['path'], dest, arrays, cfg, seed, decoder, info)
         checkpoint = dest / 'model.pt'
         checkpoints[str(seed)] = dict(path=str(checkpoint.resolve()), sha256=file_hash(checkpoint))
         print(dict(stage='updated', seed=seed, rows=info['training_rows'], at=utc_now()), flush=True)
     forecast = load_arrays(run / 'inputs', 'forecast')
     for seed in cfg['seeds']:
-        forecast_model(Path(checkpoints[str(seed)]['path']), run / f'forecasts/seed{seed}', forecast, cfg, seed, decoder)
-    ranks = rank_paths(run, cfg)
+        with journal.stage(f'forecast_seed_{seed}') if journal else nullcontext():
+            forecast_model(Path(checkpoints[str(seed)]['path']), run / f'forecasts/seed{seed}', forecast, cfg, seed, decoder)
+    with journal.stage('rank_paths') if journal else nullcontext():
+        ranks = rank_paths(run, cfg)
     published = utc_now()
     prospective = pd.Timestamp(published) < pd.Timestamp(info['horizon_dates'][0]+'T09:15:00', tz='Asia/Shanghai')
     run_info = dict(signal_date=signal, horizon_dates=info['horizon_dates'], published_at=published,

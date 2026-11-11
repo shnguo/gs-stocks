@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "protocol": "configs/earnings-drift-validation-20261012-v1.json",
+  "snapshot": "artifacts/earnings-validation-20261012/market-v1/input/snapshot",
+  "numeric": {
+    "capture": "artifacts/earnings-validation-20261012/cninfo-q3-v4",
+    "packet": "artifacts/earnings-validation-20261012/numeric-review-v2/review-packet.json",
+    "candidates": "artifacts/earnings-validation-20261012/numeric-candidates-v12.json",
+    "reference": "artifacts/earnings-validation-20261012/visual-reference-labels-v9.json"
+  },
+  "registry_audit": "artifacts/earnings-validation-20261012/version-registry-audit-v4.json",
+  "registry_view": "artifacts/earnings-validation-20261012/version-registry-current-v4.json",
+  "capture_workspace": "artifacts/earnings-validation-20261012",
+  "execution_capture_workspace": "artifacts/daily-token-live-v2/execution-observations",
+  "failed_captures": [
+    "artifacts/earnings-validation-20261012/cninfo-prior-jan-mar-v1",
+    "artifacts/earnings-validation-20261012/cninfo-prior-jan-feb-v1",
+    "artifacts/earnings-validation-20261012/cninfo-prior-jan-first-half-v1"
+  ]
+}

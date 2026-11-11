@@ -1,0 +1,58 @@
+{
+  "version": "us-factor-v2",
+  "proxy": "socks5h://127.0.0.1:1080",
+  "user_agent": "gs-stocks-factor-research/0.1 (personal research)",
+  "min_interval_seconds": 0.35,
+  "cache": "data/us/cache",
+  "universe_output": "data/us/universe-20261106-v3",
+  "study_output": "artifacts/us-factor-study-20261106-v3",
+  "benchmark": "SPY",
+  "sec": {
+    "ticker_history": "data/us/sec/ticker-history.parquet",
+    "facts": "data/us/sec/facts-20261105.parquet",
+    "companyfacts_zip": "data/us/sec/companyfacts-20261105.zip",
+    "industry": "data/us/sec/industry-20261106.parquet"
+  },
+  "russell": {
+    "output": "data/us/russell-20261106-v1",
+    "calendar": "data/us/universe-20261106-v2/calendar.parquet",
+    "size": 1000,
+    "min_price": 1.0,
+    "max_shares_age_days": 400,
+    "secondary_volume_share": 0.1,
+    "min_turnover": 2e-05,
+    "chunk": 100
+  },
+  "start": "2016-01-01",
+  "end": "2026-11-05",
+  "sp500_commit": "a2430f2af0c79ddf0748e91de11bdeb1616ab5a7",
+  "ndx_current_page": "List_of_NASDAQ-100_companies",
+  "ndx_current_revision": 1381716526,
+  "ndx_history_page": "Historical_components_of_the_Nasdaq-100",
+  "ndx_history_revision": 1379454387,
+  "ndx_as_of": "2026-11-05",
+  "momentum": {
+    "lookback": 252,
+    "skip": 21,
+    "min_traded": 200
+  },
+  "reversal": {
+    "lookback": 21,
+    "min_traded": 15
+  },
+  "max_gap_sessions": 20,
+  "value_min_components": 2,
+  "turnover_bounds": [
+    2e-05,
+    0.2
+  ],
+  "workers": 8,
+  "quantiles": 5,
+  "cost_one_way": 0.0005,
+  "bootstrap_block_months": 6,
+  "bootstrap_repetitions": 1000,
+  "limitations": "S&P 500 membership comes from a community-maintained point-in-time dataset; Nasdaq-100 membership is reconstructed backwards from Wikipedia change records; Russell 1000 is rebuilt by ranking SEC cover-page shares x price each May (no banding, float or country rules; 2016-2017 ranks use the August 2017 ticker map). Value inputs use only SEC 10-K/10-Q facts filed by the signal date; foreign filers have no value inputs. Prices are Alpaca SIP daily bars adjusted for splits and dividends; delisted holdings are valued at their last traded close. Equal-weight quintiles, next-open entry and exit, flat 0.05% one-way cost. Physics momentum variants (drift, impulse, smooth, mass, friction) were fixed before this run and are reported together; no variant was added or tuned after seeing results.",
+  "physics": {
+    "jump_sigma": 3.0
+  }
+}

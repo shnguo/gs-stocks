@@ -1,0 +1,140 @@
+{
+  "version": "earnings-drift-validation-20261012-v1",
+  "status": "design_only_requires_data_and_runner_implementation",
+  "existing_runner_compatible": false,
+  "capital_cny": 200000,
+  "timezone": "Asia/Shanghai",
+  "hypothesis": "New positive earnings information followed by completed-close price confirmation adds net return beyond matched price-only selection.",
+  "universe": {
+    "scope": "historically_identified_shanghai_shenzhen_main_board_a_shares",
+    "require_actual_account_permission_for_expansion": true,
+    "exclude_statuses": ["ST", "*ST", "unknown"],
+    "minimum_listed_sessions": 120,
+    "minimum_adv20_cny": 30000000,
+    "historical_membership_and_delistings_required": true
+  },
+  "event": {
+    "primary_family": "first_numeric_positive_earnings_forecast_for_company_reporting_period",
+    "report_only_new_numeric_information": true,
+    "deduplication_key": ["instrument_id", "fiscal_period", "information_revision"],
+    "same_information_not_recounted_at_final_report": true,
+    "minimum_net_profit_yoy_lower_bound": 0.30,
+    "profit_metric": "issuer_disclosed_attributable_net_profit_same_fiscal_period_basis",
+    "require_positive_prior_period_profit": true,
+    "prior_loss_turnarounds": "separate_exploratory_stratum",
+    "event_rank": "ascending_first_publication_then_descending_yoy_lower_bound_then_instrument_id",
+    "eligible_signal_session": "first_full_exchange_session_strictly_after_available_date_shared_by_E0_and_E1",
+    "maximum_entries_per_company_reporting_period": 1,
+    "surprise_claim_requires_point_in_time_expectation": true,
+    "verified_historical_publication_required_for_historical_test": true,
+    "otherwise_available_at": "first_real_local_observation",
+    "missing_numeric_fields": "exclude_with_reason"
+  },
+  "confirmation": {
+    "common_buy_gate": "adjusted_completed_close_at_or_above_formal_ma5",
+    "event_arm_extra_gate": [
+      "first_full_exchange_session_close_strictly_after_event_available_date",
+      "formal_ma5_rising",
+      "volume_ratio_to_prior20_at_least_1",
+      "existing_radar_overextended_false"
+    ],
+    "subjective_target_price_and_existing_70_20_10_score": "not_used_in_primary_experiment"
+  },
+  "execution": {
+    "decision_freeze_before_next_session": "09:00:00",
+    "hard_timeliness_deadline": "09:15:00",
+    "entry": "next_session_open_conditional_fill_scenario",
+    "maximum_upward_open_gap_atr14": 1.0,
+    "primary_holding_sessions": 20,
+    "exit": "open_after_20_complete_holding_sessions_or_next_actual_sellable_session",
+    "secondary_holding_sessions": [5],
+    "primary_entry_order_expiry_sessions": 1,
+    "replace_blocked_or_missing_candidates_after_outcomes": false,
+    "primary_model_forecast_peak_or_daily_high_low_fill": false,
+    "blocked_exit_keeps_position_and_pnl": true,
+    "risk_status_exit": "request_next_sellable_session",
+    "effective_dated_lots_settlement_taxes_actions_required": true
+  },
+  "portfolio": {
+    "maximum_positions": 6,
+    "maximum_initial_weight_per_position": 0.15,
+    "maximum_gross_weight": 0.90,
+    "maximum_industry_weight": 0.30,
+    "adv_participation": 0.005,
+    "allocation": "equal_initial_capital_slot_no_forced_reinvestment",
+    "no_signal_or_blocked_order": "cash",
+    "research_drawdown_pause": 0.10,
+    "drawdown_status": "proposed_research_guardrail_not_user_confirmed_loss_tolerance",
+    "loss_limit_is_not_guaranteed": true
+  },
+  "costs": {
+    "broker_commission_rate": 0.0005,
+    "broker_commission_rate_user_confirmed": true,
+    "minimum_commission_cny_placeholder": 5,
+    "minimum_commission_user_confirmed": false,
+    "actual_broker_schedule_required_before_profit_acceptance": true,
+    "stamp_and_transfer_fees": "verified_effective_dated_schedule_not_single_current_rate_backfilled",
+    "slippage_bps_each_side_scenarios": [5, 10, 20],
+    "base_slippage_bps_each_side": 10,
+    "stress": "double_commission_and_slippage_keep_statutory_tax_schedule_actual",
+    "delayed_entry_sessions": [1],
+    "software_and_data_expense": "report_separately_and_subtract_from_customer_economics"
+  },
+  "arms": [
+    {"id": "P", "role": "price_only_control", "rank": "past20_session_return", "technical_gate": "same_as_E1"},
+    {"id": "M", "role": "existing_frozen_model_control", "rank": "current_five_day_model_rank", "technical_gate": "same_as_E1", "note": "Ranking control only; does not imply a twenty-day model forecast."},
+    {"id": "E0", "role": "event_without_extra_confirmation", "rank": "event_rank", "technical_gate": "common_ma5_buy_gate"},
+    {"id": "E1", "role": "sole_primary_candidate", "rank": "event_rank", "technical_gate": "common_and_event_extra_confirmation"}
+  ],
+  "primary_comparator": {
+    "name": "P_matched_exposure",
+    "freeze_matches_before_outcomes": true,
+    "same_entry_date_cash_weights_and_horizon": true,
+    "exact_match": ["board", "point_in_time_industry"],
+    "rank_calipers": {"past20_return": 0.10, "volatility20": 0.10, "adv20": 0.10, "float_market_cap": 0.10},
+    "controls_require_complete_event_coverage": true,
+    "unmatched_policy": "retain_in_full_account_results_exclude_only_from_disclosed_matched_statistic",
+    "minimum_matched_weight_coverage": 0.90,
+    "interpretation": "observational_incremental_evidence_not_randomized_causality"
+  },
+  "validation": {
+    "historical_role": "development_consistency_and_failure_modes_only_if_prior_exposure_or_pretraining_unknown",
+    "historical_walk_forward": {"train_years": 3, "validation_years": 1, "test_months": 3},
+    "purge_by_actual_label_end": true,
+    "minimum_embargo_sessions": 20,
+    "prospective_start": "first_timely_session_after_protocol_data_and_code_registration",
+    "interim_review_sessions": 120,
+    "interim_statistical_promotion": false,
+    "single_formal_look_sessions": 252,
+    "minimum_mature_unique_company_report_events": 100,
+    "minimum_active_entry_dates": 60,
+    "insufficient_sample_decision": "not_established_no_success_claim",
+    "primary_metric": "annualized_daily_net_account_return_difference_E1_minus_P_matched_exposure",
+    "bootstrap": {"paired_date_blocks": 20, "repetitions": 10000, "seed": 20261012, "interval": 0.95},
+    "primary_tests": 1,
+    "secondary_comparisons": "descriptive_no_promotion_without_new_registration"
+  },
+  "proposed_acceptance_gates": {
+    "net_account_return_positive": true,
+    "annualized_net_excess_over_matched_price_control": 0.05,
+    "primary_difference_interval_lower_bound_above": 0,
+    "maximum_account_drawdown": 0.10,
+    "stress_net_account_return_positive": true,
+    "stress_primary_excess_positive": true,
+    "one_session_delayed_net_account_return_positive": true,
+    "one_session_delayed_primary_excess_positive": true,
+    "positive_excess_quarters_at_least": 3,
+    "remove_best_five_event_trades_excess_still_positive": true,
+    "all_included_decisions_timely_and_versioned": true,
+    "minimum_matched_weight_coverage": 0.90,
+    "targets_status": "research_hurdles_not_forecast_or_guarantee"
+  },
+  "stop_rules": [
+    "Unavailable point-in-time event or execution evidence blocks profit qualification.",
+    "Negative historical net economics under fixed rules ends this version; do not search thresholds on its evaluation data.",
+    "Risk guardrail breach pauses new entries; retained holdings and blocked exits remain in the account ledger.",
+    "Any strategy, source, threshold, model-update or horizon change starts a new registered version.",
+    "No formal statistical success decision at the 120-session operational review.",
+    "Failure or insufficient evidence at the single 252-session formal review is recorded as not established."
+  ]
+}

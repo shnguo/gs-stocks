@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
+async function render(path = "/market") {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
   const { default: worker } = await import(workerUrl.href);
   return worker.fetch(
-    new Request("http://localhost/", { headers: { accept: "text/html" } }),
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
     { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
     { waitUntil() {}, passThroughOnException() {} },
   );
@@ -29,8 +29,31 @@ test("emits finished site metadata", async () => {
   const response = await render();
   const html = await response.text();
   assert.match(html, /<html[^>]+lang="zh-CN"/i);
-  assert.match(html, /<title>低位承接研究台｜蜡烛图与承接强度<\/title>/i);
+  assert.match(html, /<title>行情图表｜低位承接研究台<\/title>/i);
   assert.match(html, /日线蜡烛图与低位承接强度指标/);
+});
+
+test("every section shares the site navigation and marks the current page", async () => {
+  for (const [path, label, title] of [["/", "总览", "低位承接研究台"], ["/market", "行情", "行情图表｜低位承接研究台"], ["/research", "研究复盘", "研究复盘｜低位承接研究台"], ["/us-screen", "美股筛选", "美股筛选｜低位承接研究台"]]) {
+    const response = await render(path);
+    assert.equal(response.status, 200, path);
+    const html = await response.text();
+    assert.match(html, /aria-label="主导航"/, path);
+    for (const href of ["/", "/market", "/research", "/us-screen"]) assert.match(html, new RegExp(`href="${href}"`), `${path} links ${href}`);
+    assert.match(html, new RegExp(`aria-current="page"[^>]*>${label}<`), `${path} marks ${label}`);
+    assert.match(html, new RegExp(`<title>${title}</title>`), `${path} title`);
+  }
+});
+
+test("renders the overview landing page", async () => {
+  const response = await render("/");
+  const html = await response.text();
+  assert.match(html, /今日概览/);
+  assert.match(html, /自选股票/);
+  assert.match(html, /研究复盘/);
+  assert.match(html, /美股筛选/);
+  assert.match(html, /数据状态/);
+  assert.match(html, /href="\/market"/);
 });
 
 test("renders the favorite-stock sidebar with market tabs", async () => {
@@ -54,7 +77,7 @@ test("renders the favorite-stock sidebar with market tabs", async () => {
 });
 
 test("supports persistent add and remove actions for favorite stocks", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(clientSource, /FAVORITES_STORAGE_KEY/);
   assert.match(clientSource, /localStorage\.getItem\(FAVORITES_STORAGE_KEY\)/);
@@ -157,7 +180,7 @@ test("accepts canonical custom Hong Kong and US instrument ids", async () => {
 });
 
 test("repairs completed US history gaps before joining the live candle", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const routeSource = await readFile(
     new URL("../app/api/historical-gap-repair/route.ts", import.meta.url),
     "utf8",
@@ -241,7 +264,7 @@ test("resolves new A-share symbols without a fixed four-stock allowlist", async 
 });
 
 test("keeps the market data credential on the server", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const routeSource = await readFile(new URL("../app/api/chart-daily-bars/route.ts", import.meta.url), "utf8");
   const marketDaysRouteSource = await readFile(new URL("../app/api/market-days/route.ts", import.meta.url), "utf8");
   const readinessRouteSource = await readFile(
@@ -292,7 +315,7 @@ test("keeps the market data credential on the server", async () => {
 
 test("loads compact snapshots early and restores the last verified browser copy", async () => {
   const layoutSource = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const cacheSource = await readFile(new URL("../app/chart-cache.ts", import.meta.url), "utf8");
   const routeSource = await readFile(
     new URL("../app/api/chart-daily-bars/route.ts", import.meta.url),
@@ -322,7 +345,7 @@ test("loads compact snapshots early and restores the last verified browser copy"
 });
 
 test("renders the requested moving-average set on the price chart", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   assert.match(clientSource, /MOVING_AVERAGE_PERIODS\s*=\s*\[5, 10, 20, 30, 60\]/);
   assert.match(clientSource, /displayMovingAverageValues/);
   assert.match(clientSource, /MA5、MA10、MA20、MA30和MA60均线/);
@@ -452,7 +475,7 @@ test("promotes only closed complete realtime quotes into formal calculations", a
 });
 
 test("revalidates a completed realtime candle until canonical history publishes it", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   assert.match(clientSource, /completedQuoteNeedsHistoricalRevalidation/);
   assert.match(clientSource, /closedBarRevalidationDelayMs/);
   assert.match(clientSource, /MAX_CLOSED_BAR_REVALIDATION_ATTEMPTS/);
@@ -486,7 +509,7 @@ test("revalidates a completed realtime candle until canonical history publishes 
 });
 
 test("keeps the page focused on live market-viewing content", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(clientSource, /把“主力吸货”拆成|日线级别 · 技术研究|一次可信的承接|研究边界|Daily research view/);
   assert.doesNotMatch(clientSource, /provenance-strip|行情数据血缘|正式投影/);
   assert.doesNotMatch(clientSource, /className="hero|className="method-card|className="disclaimer/);
@@ -495,7 +518,7 @@ test("keeps the page focused on live market-viewing content", async () => {
 });
 
 test("connects realtime quotes without treating the intraday candle as confirmed", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   const realtimeSource = await readFile(new URL("../app/use-realtime-quote.ts", import.meta.url), "utf8");
   assert.match(clientSource, /useRealtimeQuote/);
@@ -528,7 +551,7 @@ test("connects realtime quotes without treating the intraday candle as confirmed
 
 test("starts active realtime in parallel and renders a coherent last candle", async () => {
   const layoutSource = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const realtimeSource = await readFile(
     new URL("../app/use-realtime-quote.ts", import.meta.url),
     "utf8",
@@ -567,7 +590,7 @@ test("starts active realtime in parallel and renders a coherent last candle", as
 });
 
 test("renders provisional moving averages with the live candle while formal indicators stay closed-only", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const {
     displayMovingAverageValues,
     selectCompletedSeries,
@@ -591,7 +614,7 @@ test("renders provisional moving averages with the live candle while formal indi
 });
 
 test("shows the active market-data provider without restoring the removed provenance strip", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const providerSource = await readFile(new URL("../app/use-realtime-provider.ts", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(clientSource, /className="provider-details"/);
@@ -606,7 +629,7 @@ test("shows the active market-data provider without restoring the removed proven
 });
 
 test("removes the right rail from layout when collapsed", async () => {
-  const clientSource = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const clientSource = await readFile(new URL("../app/market/page.tsx", import.meta.url), "utf8");
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(clientSource, /\[rightRailCollapsed, setRightRailCollapsed\]\s*=\s*useState\(true\)/);
   assert.match(clientSource, /className="rail-toggle topbar-right-rail-toggle"/);

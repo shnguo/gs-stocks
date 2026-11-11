@@ -1,0 +1,20 @@
+{
+  "version": "factor-study-v1",
+  "snapshot": "artifacts/formal-daily-base-20260922-v1/snapshot",
+  "valuation_source": "artifacts/free-features-source-20260914-v1",
+  "industry_sources": ["artifacts/industry-history-20260914-v1", "artifacts/industry-weekly-20260914-v1"],
+  "output": "artifacts/factor-study-20261105-v1",
+  "sealed_from": "2025-08-07",
+  "min_listing_days": 365,
+  "exclude_exchanges": ["XBSE"],
+  "momentum": {"lookback": 252, "skip": 21, "min_traded": 200},
+  "reversal": {"lookback": 21, "min_traded": 15},
+  "value_min_components": 2,
+  "industry_max_age_days": 14,
+  "quantiles": 5,
+  "cost_one_way": 0.0015,
+  "bootstrap_block_months": 6,
+  "bootstrap_repetitions": 1000,
+  "min_study_months": 36,
+  "limitations": "Equal-weight quintiles, next-open entry and exit. Valuation (Eastmoney) and industry (Baostock) are retrospective vintages, not point-in-time; value results can be optimistic. Suspended or delisted holdings are valued at their last traded close. One-price limit-up entries are excluded; other limit and capacity effects are not modelled. Cost is a flat 0.15% per one-way trade on quintile turnover. No forward return reaches the sealed date."
+}

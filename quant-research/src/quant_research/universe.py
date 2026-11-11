@@ -29,11 +29,14 @@ def risk_status(snapshot: Snapshot, date: str, at: pd.Timestamp) -> dict[str, st
 
 
 def universe_on(snapshot: Snapshot, date: str, signal_time: str = "20:00", *,
-                risk_policy: str = "exclude_st") -> pd.DataFrame:
+                risk_policy: str = "exclude_st", availability_at=None) -> pd.DataFrame:
     if risk_policy not in {"include", "exclude_st"}:
         raise ValueError("Invalid universe risk policy")
     rows = snapshot.tables["instruments"].copy()
-    states = risk_status(snapshot, date, cutoff(date, signal_time))
+    at = pd.Timestamp(availability_at) if availability_at is not None else cutoff(date, signal_time)
+    if at.tzinfo is None:
+        raise ValueError("Universe availability time must include its timezone")
+    states = risk_status(snapshot, date, at)
     rows["date"] = date
     rows["risk_status"] = rows.instrument_id.map(states)
     rows["reason"] = "eligible"

@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+import "./site.css";
+import { SiteHeader } from "./components/site-header";
 
 export const metadata: Metadata = {
-  title: "低位承接研究台｜蜡烛图与承接强度",
-  description: "将日线蜡烛图与低位承接强度指标放在同一时间轴上观察。",
+  title: { default: "低位承接研究台", template: "%s｜低位承接研究台" },
+  description: "行情图表、研究复盘与美股动量筛选：将日线蜡烛图与低位承接强度指标放在同一时间轴上观察。",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
@@ -22,6 +20,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
+        <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/geist/Geist-Variable.woff2" />
         <link
           rel="preload"
           as="fetch"
@@ -37,7 +36,8 @@ export default function RootLayout({
           href="/api/realtime-quote?instrument_id=cn.xshg.688008"
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body>
+        <SiteHeader />
         {children}
       </body>
     </html>

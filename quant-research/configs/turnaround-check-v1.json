@@ -1,0 +1,20 @@
+{
+  "version": "turnaround-check-v1",
+  "output": "artifacts/turnaround-check-20261106-v1",
+  "us_config": "configs/us-factor-v2.json",
+  "jump_sigma": 3.0,
+  "prior_window": {"lookback": 252, "skip": 63, "min_traded": 150},
+  "recent_window": {"lookback": 63, "skip": 0, "min_traded": 50},
+  "relative_cut": 0.3333,
+  "scores": {
+    "turnaround_score": "equal-weight percentile composite of falling prior drift (-prior) and rising recent drift",
+    "recent_drift_3m": "reference: recent 3-month drift alone (rising now, whatever came before)",
+    "prior_fall_9m": "reference: -prior drift alone (fell the most before the recent 3 months)"
+  },
+  "baskets": {
+    "turned_up": "prior drift < 0 and recent drift > 0, equal weight",
+    "deep_turn": "prior drift in the bottom third and recent drift in the top third of the universe, equal weight",
+    "turned_up_top50": "the 50 highest turnaround_score stocks among turned_up"
+  },
+  "note": "US index union, monthly rebalancing, next-open entry, 0.05% one-way cost on basket turnover. Definitions fixed before running; all are reported."
+}

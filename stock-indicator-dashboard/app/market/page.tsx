@@ -23,12 +23,12 @@ import {
   useRealtimeQuote,
   type RealtimeConnectionStatus,
   type RealtimeQuote,
-} from "./use-realtime-quote";
+} from "../use-realtime-quote";
 import {
   inferredProvider,
   useRealtimeProvider,
   type RealtimeProviderInfo,
-} from "./use-realtime-provider";
+} from "../use-realtime-provider";
 import {
   closedBarRevalidationDelayMs,
   completedQuoteNeedsHistoricalRevalidation,
@@ -38,20 +38,20 @@ import {
   instrumentReadinessRetryDelayMs,
   isCompletedRealtimeQuote,
   selectCompletedSeries,
-} from "./market-series";
-import { readChartCache, writeChartCache } from "./chart-cache";
+} from "../market-series";
+import { readChartCache, writeChartCache } from "../chart-cache";
 import {
   chartDataIndexAt,
   chartHorizontalLayout,
   chartXAt,
-} from "./chart-layout";
+} from "../chart-layout";
 import {
   isPlaceholderFavoriteName,
   stockSearchReadinessLabel,
   stockSearchResultIsAddable,
   type StockSearchHistoricalStatus,
-} from "./lib/favorite-stock";
-import { realtimeMiddayState } from "./lib/realtime-market-schedule";
+} from "../lib/favorite-stock";
+import { realtimeMiddayState } from "../lib/realtime-market-schedule";
 import {
   isSupportedAShareInstrumentId,
   marketInstrumentFromCatalog,
@@ -61,7 +61,7 @@ import {
   type AdjustmentBasis,
   type MarketGroup,
   type MarketInstrumentIdentity,
-} from "./lib/stock-symbol";
+} from "../lib/stock-symbol";
 
 type Candle = {
   date: string;
@@ -1142,10 +1142,7 @@ function LeftRail({
   return (
     <aside className={`left-rail ${collapsed ? "collapsed" : ""}`} aria-label="左侧收藏栏">
       <header className="left-rail-topbar">
-        <a className="brand" href="#top" aria-label="低位承接研究台首页">
-          <span className="brand-mark">承</span>
-          <span className="brand-copy"><strong>低位承接研究台</strong><small>Price absorption research</small></span>
-        </a>
+        <span className="left-rail-title"><strong>行情工作台</strong><small>Watchlist</small></span>
         <button className="rail-toggle" type="button" aria-expanded={!collapsed} aria-controls="favorite-stock-panel" title={collapsed ? "展开左侧栏" : "收起左侧栏"} onClick={onToggle}>
           <SidebarSimpleIcon aria-hidden="true" size={18} weight="regular" />
           <span className="sr-only">{collapsed ? "展开左侧栏" : "收起左侧栏"}</span>
@@ -1320,6 +1317,23 @@ export default function Home() {
     }, 0);
     return () => window.clearTimeout(restoreTimer);
   }, []);
+
+  // Deep link from the overview: /market?instrument=<id> selects that watchlist stock once
+  // it is available (server favorites arrive after local ones).
+  const pendingDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    pendingDeepLink.current = new URLSearchParams(window.location.search).get("instrument");
+  }, []);
+  useEffect(() => {
+    const target = pendingDeepLink.current;
+    if (!favoritesReady || !target) return;
+    if (!favoriteStocks.some((item) => item.instrumentId === target) && !STOCKS.some((item) => item.instrumentId === target)) return;
+    pendingDeepLink.current = null;
+    const timer = window.setTimeout(() => selectStock(target), 0);
+    return () => window.clearTimeout(timer);
+    // selectStock is recreated every render; the target is consumed once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [favoriteStocks, favoritesReady]);
 
   useEffect(() => {
     if (!favoritesReady || restoredFavoritesKey.current !== FAVORITES_STORAGE_KEY) return;

@@ -1,0 +1,17 @@
+{
+  "version": "physics-robustness-v1",
+  "output": "artifacts/physics-robustness-20261106-v1",
+  "us_config": "configs/us-factor-v2.json",
+  "cn_config": "configs/factor-study-v2.json",
+  "base_sigma": 3.0,
+  "jump_sigmas": [2.0, 2.5, 3.0, 4.0, 5.0],
+  "short_window": {"lookback": 126, "skip": 21, "min_traded": 100},
+  "checks": [
+    "jump threshold: drift and impulse at every sigma, and the monthly drift-minus-momentum IC gap",
+    "controls: drift residual on volatility and traded value; on 12-1 momentum; on all three; low volatility alone",
+    "subperiods: first and second half of the months",
+    "size halves: above and below the monthly median traded value",
+    "6-1 month window: drift vs plain momentum"
+  ],
+  "note": "Checks fixed before running. Size proxy is log mean traded value in the momentum window for both markets (A-shares have no point-in-time market cap). US universe is the S&P 500 / Nasdaq-100 / Russell 1000 union; A-shares use study A eligibility."
+}

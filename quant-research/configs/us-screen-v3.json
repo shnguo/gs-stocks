@@ -1,0 +1,55 @@
+{
+  "version": "us-screen-v3",
+  "data_config": "configs/us-factor-v2.json",
+  "membership": "data/us/universe-20261106-v3/membership.parquet",
+  "output_root": "artifacts/us-screen",
+  "history_calendar_days": 700,
+  "momentum": {
+    "lookback": 252,
+    "skip": 21,
+    "min_traded": 200
+  },
+  "jump_sigma": 3.0,
+  "max_gap_sessions": 20,
+  "top_n": 50,
+  "evidence": "docs/physics-momentum-20261106.md: US index union 2017-01 to 2026-09, drift IC 0.024 (t 1.63), monthly IC gain over 12-1 momentum 0.015 (95% CI 0.006 to 0.023), top-quintile excess over the equal-weight universe 4.4% a year after a 0.05% one-way cost. In-sample, monthly rebalancing, equal weight. Ranked within Fama-French 12 industries (current SIC): IC 0.020 (95% CI 0.004 to 0.039), net long-short 5.7% a year, top-quintile excess 3.5%.",
+  "per_sector": 5,
+  "turnaround": {
+    "prior_window": {
+      "lookback": 252,
+      "skip": 63,
+      "min_traded": 150
+    },
+    "recent_window": {
+      "lookback": 63,
+      "skip": 0,
+      "min_traded": 50
+    },
+    "top_n": 30,
+    "warning": "美股指数成分股 2017 到 2026 年，每月买入全部符合条件的股票（约 160 只）、持有一个月，扣费后每年比股票池等权平均低 7.1%（95% 区间不含零），10 年里 9 年为负；只买得分最高的 50 只，每年低 6.6%。原因是长期下跌本身是负面信号，近 3 个月的回升不足以扭转。见 docs/us-screen-20261106.md。"
+  },
+  "shapes": {
+    "config": "configs/shapes-check-v1.json",
+    "results": "artifacts/shapes-check-20261106-v1/results.json",
+    "top_n": 10
+  },
+  "pullback": {
+    "config": "configs/pullback-check-v1.json",
+    "results": "artifacts/pullback-check-20261108-v1/results.json"
+  },
+  "shortlist": {
+    "config": "configs/shortlist-check-v1.json",
+    "results": "artifacts/shortlist-check-20261110-v1/results.json",
+    "size": 20
+  },
+  "fundamental_turnaround": {
+    "config": "configs/turnaround-fundamental-v1.json",
+    "results": "artifacts/turnaround-fundamental-20261108-v1/results.json",
+    "lag_days": 365,
+    "list": "beaten_improving_cash",
+    "top_n": 30,
+    "warning": "困境反转（基本面）回测没有通过：美股指数成分股 2017 到 2026 年，股价在一年高点下方最深的三分之一、且利润率改善、收入增长、经营现金流为正的股票（每月约 95 只），扣费后每年只比股票池等权高 1.6%，95% 区间 [−2.6%, +5.3%] 含零，11 年里 4 年亏损。比只看价格的“见底回升”（−7.1%）好得多，但没有证据能跑赢。反过来，股价深跌且基本面继续恶化的股票每年低 11.6%（样本少）。见 docs/pullback-turnaround-20261108.md。"
+  },
+  "evidence_pullback": "docs/pullback-turnaround-20261108.md",
+  "evidence_shortlist": "docs/shortlist-20261110.md"
+}

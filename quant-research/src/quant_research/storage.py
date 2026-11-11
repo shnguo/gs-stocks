@@ -237,6 +237,8 @@ class Snapshot:
                         require_portfolio_data: bool = True) -> list[str]:
         d = self.manifest["declaration"]
         reasons = []
+        if d.get("execution_scope") and (min_years > 0 or not require_portfolio_data):
+            reasons.append("forward_execution_snapshot_not_full_historical_experiment")
         if d["synthetic"]:
             reasons.append("synthetic_data_is_engineering_validation_only")
         if d["vintage"] != "verified_pit":

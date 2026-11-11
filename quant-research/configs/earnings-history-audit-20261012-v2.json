@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "protocol": "configs/earnings-drift-validation-20261012-v2.json",
+  "history": "artifacts/full-market-training-20260910-v1",
+  "history_alias": "artifacts/formal-daily-base-20260922-v1",
+  "refresh": "artifacts/earnings-validation-20261012/market-v1/input",
+  "holdout_policy": "artifacts/full-market-training-20260910-v1/schedule.json"
+}

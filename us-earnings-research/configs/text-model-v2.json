@@ -1,0 +1,15 @@
+{
+  "protocol": "text-model-v2",
+  "model": "TF-IDF word unigrams/bigrams + balanced logistic regression",
+  "training_end": "2022-12-31",
+  "evaluation_start": "2023-01-01",
+  "max_features": 10000,
+  "min_df": 2,
+  "C": 1.0,
+  "threshold": 0.5,
+  "seed": 20261013,
+  "labels": "weak supervision from lexical-v1.2; not human gold labels",
+  "target": "explicit raised annual guidance language; no return labels",
+  "probability_warning": "balanced classifier scores are not calibrated probabilities",
+  "selection": "Same settings as v1; labels repaired after initial results. No return fitting or threshold search."
+}

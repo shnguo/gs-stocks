@@ -5,6 +5,7 @@
 ## 主要目录
 
 - quant-research：量化研究、事件驱动分析、模型训练与验证代码。
+- us-earnings-research：美股财报策略的原始披露采集、文本筛选、回测与可执行 notebook。
 - stock-indicator-dashboard：股票指标与实时行情仪表盘。
 - 根目录中的研究计划、分析脚本和 notebook：跨项目研究资料。
 

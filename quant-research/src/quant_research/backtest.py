@@ -15,6 +15,7 @@ class Position:
     shares: float
     bought_index: int
     last_price: float
+    planned_exit_date: str = ""
 
 
 def rule_on(snapshot: Snapshot, board: str, date: str) -> pd.Series:
@@ -35,6 +36,12 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
         raise ValueError("Invalid simulation parameters")
     if predictions.empty or predictions.duplicated(["date", "instrument_id"]).any():
         raise ValueError("Empty or duplicate predictions")
+    scope = snapshot.manifest["declaration"].get("execution_scope")
+    if scope and (set(predictions.date) != {scope["signal_date"]} or
+                  not set(predictions.instrument_id) <= set(scope["instruments"]) or
+                  "planned_exit_date" not in predictions or
+                  set(predictions.planned_exit_date) != {scope["horizon_dates"][-1]} or delay_days):
+        raise ValueError("Simulation exceeds the verified forward execution scope")
     if not np.isfinite(predictions.score).all():
         raise ValueError("Non-finite prediction")
     instruments = snapshot.tables["instruments"].set_index("instrument_id")
@@ -43,6 +50,21 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
     dates = snapshot.dates
     if not set(predictions.date) <= set(dates):
         raise ValueError("Prediction date is not in the trading calendar")
+    if "planned_exit_date" in predictions:
+        if (not set(predictions.planned_exit_date) <= set(dates) or
+                (predictions.planned_exit_date <= predictions.date).any()):
+            raise ValueError("Planned exits must be future calendar sessions")
+    if "decision_at" in predictions:
+        for date, group in predictions.groupby("date"):
+            if group.decision_at.nunique() != 1:
+                raise ValueError("Each signal cohort must share one decision timestamp")
+            at = pd.Timestamp(group.decision_at.iloc[0])
+            offset = dates.index(date)
+            if offset + 1 >= len(dates):
+                raise ValueError("No observable execution day after the signals")
+            if (at.tzinfo is None or at < cutoff(date, "15:00") or
+                    at >= pd.Timestamp(dates[offset+1] + "T09:15:00", tz="Asia/Shanghai")):
+                raise ValueError("Simulation requires a timely frozen decision timestamp")
     index = {d: i for i, d in enumerate(dates)}
     scheduled = {}
     for date, group in predictions.groupby("date"):
@@ -67,6 +89,8 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
     start = index[min(scheduled)]
     # Liquidate only through scheduled maturity/risk orders. Open holdings stay on the final NAV.
     end = min(len(dates) - 1, index[max(scheduled)] + horizon)
+    if "planned_exit_date" in predictions:
+        end = index[predictions.planned_exit_date.max()]
     stale_valuation_days = 0
     for i in range(start, end + 1):
         date = dates[i]
@@ -96,7 +120,8 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
         risk = risk_status(snapshot, date, cutoff(date, "09:25"))
         used_notional = defaultdict(float)
 
-        def execute(instrument_id: str, side: str, requested: float, reason: str) -> None:
+        def execute(instrument_id: str, side: str, requested: float, reason: str,
+                    price_field: str = "open", planned_exit_date: str = "") -> None:
             nonlocal cash
             rule = rule_on(snapshot, str(instruments.loc[instrument_id, "board"]), date)
             order = {"date": date, "instrument_id": instrument_id, "side": side,
@@ -115,9 +140,10 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
             if not np.isfinite(limit) or limit <= 0:
                 order["block_reason"] = "price_limit_unverified"
                 return
-            if ((side == "buy" and bar.open >= limit - 1e-8) or
-                    (side == "sell" and bar.open <= limit + 1e-8)):
-                order["block_reason"] = "open_at_price_limit"
+            reference_price = float(bar[price_field])
+            if ((side == "buy" and reference_price >= limit - 1e-8) or
+                    (side == "sell" and reference_price <= limit + 1e-8)):
+                order["block_reason"] = price_field + "_at_price_limit"
                 return
             if side == "buy" and risk[instrument_id] != "normal":
                 order["block_reason"] = "risk_status_at_execution"
@@ -125,7 +151,7 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
             if side == "sell" and i - positions[instrument_id].bought_index < int(rule.t_plus):
                 order["block_reason"] = "t_plus_settlement"
                 return
-            price = float(bar.open) * (1 + (1 if side == "buy" else -1) *
+            price = reference_price * (1 + (1 if side == "buy" else -1) *
                                        float(rule.slippage_bps) / 10000 * cost_multiplier)
             if (side == "buy" and price > limit) or (side == "sell" and price < limit):
                 order["block_reason"] = "slippage_crosses_limit"
@@ -159,7 +185,7 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
             cost = fee(quantity)
             if side == "buy":
                 cash -= quantity * price + cost
-                positions[instrument_id] = Position(quantity, i, float(bar.open))
+                positions[instrument_id] = Position(quantity, i, reference_price, planned_exit_date)
             else:
                 cash += quantity * price - cost
                 positions[instrument_id].shares -= quantity
@@ -170,7 +196,7 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
                          filled_shares=quantity)
             fills.append({"date": date, "instrument_id": instrument_id, "side": side,
                           "shares": quantity, "price": price, "fees": cost,
-                          "notional": quantity * price, "reason": reason})
+                          "notional": quantity * price, "reason": reason, "price_field": price_field})
 
         for instrument_id, position in list(positions.items()):
             reason = ("risk_warning_exit" if risk[instrument_id] in {"ST", "*ST"} else
@@ -180,7 +206,9 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
                 execute(instrument_id, "sell", position.shares, reason)
         if date in scheduled and not halted:
             signal_date, candidates = scheduled[date]
-            universe = universe_on(snapshot, signal_date, risk_policy="exclude_st")
+            universe = universe_on(snapshot, signal_date, risk_policy="exclude_st",
+                                   availability_at=candidates.decision_at.iloc[0]
+                                   if "decision_at" in candidates else None)
             universe = universe.set_index("instrument_id")
             eligible = universe.loc[universe.eligible]
             industry_weights = eligible.industry.value_counts(normalize=True).to_dict()
@@ -211,7 +239,11 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
                     reference = max(reference, float(bars.loc[opening_key, "open"]) *
                                     (1 + float(rule_on(snapshot, str(instruments.loc[instrument_id,
                                          "board"]), date).slippage_bps) / 10000 * cost_multiplier))
-                execute(instrument_id, "buy", budget / reference, "rank_selection")
+                execute(instrument_id, "buy", budget / reference, "rank_selection",
+                        planned_exit_date=getattr(row, "planned_exit_date", ""))
+        for instrument_id, position in list(positions.items()):
+            if position.planned_exit_date and date >= position.planned_exit_date:
+                execute(instrument_id, "sell", position.shares, "planned_close_exit", "close")
         stale = 0
         for instrument_id, position in positions.items():
             key = (date, instrument_id)
@@ -243,7 +275,9 @@ def simulate(snapshot: Snapshot, predictions: pd.DataFrame, horizon: int, config
                "fills": len(fills), "fees": sum(r["fees"] for r in fills),
                "stale_valuation_days": stale_valuation_days,
                "terminal_positions": len(positions), "halted": halted,
-               "execution_assumption": "daily_open_with_conservative_limit_blocks",
+               "execution_assumption": ("daily_open_entry_planned_close_exit_with_conservative_limit_blocks"
+                                        if "planned_exit_date" in predictions else
+                                        "daily_open_with_conservative_limit_blocks"),
                "industry_constraint": "static_research_industry_requires_historical_upgrade",
                "cost_multiplier": cost_multiplier, "delay_days": delay_days}
     return {"nav": nav_frame, "fills": pd.DataFrame(fills), "orders": pd.DataFrame(orders),
